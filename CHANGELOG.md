@@ -9,7 +9,7 @@ All notable changes to `rusty-figlet` are documented here. The format follows [K
 - Replace the 12 placeholder `.flf` fonts under `assets/fonts/` with the verbatim upstream cmatsuoka `figlet 2.2.5` fonts once a Linux-host capture pass is available. The v0.1.0 release ships syntactically-valid placeholder glyphs (height=1, 95 ASCII + 7 German codepoints via `<hexcode>` codetag blocks) — every code path (parser, smush, layout, rendering) is real and verified by 214 tests. Only the bundled glyph **art** is placeholder. See `THIRD_PARTY.md` §Pragmatic-Path Note for details.
 - Capture upstream `figlet 2.2.5` snapshot fixtures on a Linux host and engage the deferred byte-equal Strict-mode tests (T085, T086, T087, T088, T089 in `specs/00009-figlet-port/tasks.md`).
 
-## [0.1.0] - 2026-MM-DD
+## [0.1.0] - 2026-05-24
 
 ### Added
 
