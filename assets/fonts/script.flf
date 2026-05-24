@@ -1,0 +1,125 @@
+flf2a$ 1 1 8 0 15 0 0 7
+script.flf rusty-figlet v0.1.0 placeholder
+[PLACEHOLDER] rusty-figlet v0.1.0 Phase 1 scaffolded placeholder font.
+
+This font is a syntactically-valid FIGfont 2.0 placeholder generated during
+T022 in specs/00009-figlet-port/tasks.md. It satisfies the parser's required
+glyph coverage (ASCII 32..=126 plus the 7 German chars 196/214/220/228/246/
+252/223) so the FR-013 parser tests pass and the bundled-font include_bytes!
+table compiles. Polish-phase work MUST replace these placeholders with the
+verbatim cmatsuoka figlet 2.2.5 upstream font files; see THIRD_PARTY.md.
+
+Each glyph is a single line wide enough to satisfy `max_length`; for ASCII
+32..=126 the literal codepoint character appears followed by hardblank ($)
+padding. For the 7 German chars the cell uses a 2-letter ASCII mnemonic so
+the file remains pure ASCII. Renderings are NOT visually representative of
+the upstream font this file is named after.
+$$$$$$$$@@
+!$$$$$$$@@
+"$$$$$$$@@
+#$$$$$$$@@
+s$$$$$$$@@
+%$$$$$$$@@
+&$$$$$$$@@
+'$$$$$$$@@
+($$$$$$$@@
+)$$$$$$$@@
+*$$$$$$$@@
++$$$$$$$@@
+,$$$$$$$@@
+-$$$$$$$@@
+.$$$$$$$@@
+/$$$$$$$@@
+0$$$$$$$@@
+1$$$$$$$@@
+2$$$$$$$@@
+3$$$$$$$@@
+4$$$$$$$@@
+5$$$$$$$@@
+6$$$$$$$@@
+7$$$$$$$@@
+8$$$$$$$@@
+9$$$$$$$@@
+:$$$$$$$@@
+;$$$$$$$@@
+<$$$$$$$@@
+=$$$$$$$@@
+>$$$$$$$@@
+?$$$$$$$@@
+a$$$$$$$@@
+A$$$$$$$@@
+B$$$$$$$@@
+C$$$$$$$@@
+D$$$$$$$@@
+E$$$$$$$@@
+F$$$$$$$@@
+G$$$$$$$@@
+H$$$$$$$@@
+I$$$$$$$@@
+J$$$$$$$@@
+K$$$$$$$@@
+L$$$$$$$@@
+M$$$$$$$@@
+N$$$$$$$@@
+O$$$$$$$@@
+P$$$$$$$@@
+Q$$$$$$$@@
+R$$$$$$$@@
+S$$$$$$$@@
+T$$$$$$$@@
+U$$$$$$$@@
+V$$$$$$$@@
+W$$$$$$$@@
+X$$$$$$$@@
+Y$$$$$$$@@
+Z$$$$$$$@@
+[$$$$$$$@@
+\$$$$$$$@@
+]$$$$$$$@@
+^$$$$$$$@@
+_$$$$$$$@@
+`$$$$$$$@@
+a$$$$$$$@@
+b$$$$$$$@@
+c$$$$$$$@@
+d$$$$$$$@@
+e$$$$$$$@@
+f$$$$$$$@@
+g$$$$$$$@@
+h$$$$$$$@@
+i$$$$$$$@@
+j$$$$$$$@@
+k$$$$$$$@@
+l$$$$$$$@@
+m$$$$$$$@@
+n$$$$$$$@@
+o$$$$$$$@@
+p$$$$$$$@@
+q$$$$$$$@@
+r$$$$$$$@@
+s$$$$$$$@@
+t$$$$$$$@@
+u$$$$$$$@@
+v$$$$$$$@@
+w$$$$$$$@@
+x$$$$$$$@@
+y$$$$$$$@@
+z$$$$$$$@@
+{$$$$$$$@@
+|$$$$$$$@@
+}$$$$$$$@@
+~$$$$$$$@@
+C4 GERMAN AE (placeholder)
+AE$$$$$$@@
+D6 GERMAN OE (placeholder)
+OE$$$$$$@@
+DC GERMAN UE (placeholder)
+UE$$$$$$@@
+E4 GERMAN ae (placeholder)
+ae$$$$$$@@
+F6 GERMAN oe (placeholder)
+oe$$$$$$@@
+FC GERMAN ue (placeholder)
+ue$$$$$$@@
+DF GERMAN ss (placeholder)
+ss$$$$$$@@

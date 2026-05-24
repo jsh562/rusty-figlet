@@ -1,0 +1,27 @@
+[licenses]
+version = 2
+confidence-threshold = 0.93
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-DFS-2016",
+    "Zlib",
+    "MIT-0",
+    "CC0-1.0",
+    # Bundled FIGfont files under assets/fonts/ ship under the Artistic License
+    # per FR-061 (one-way compatible with permissive redistribution; preserved
+    # in each `.flf` comment header and enumerated in THIRD_PARTY.md).
+    "Artistic-2.0",
+    "Artistic-1.0-Perl",
+]
+
+[bans]
+multiple-versions = "warn"
+
+[advisories]
+version = 2
+yanked = "deny"

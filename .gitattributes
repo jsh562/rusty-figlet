@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.sh text eol=lf
+*.ps1 text eol=crlf
+*.flf text eol=lf
+tests/snapshots/upstream_v2_2_5/* text eol=lf
+completions/* text eol=lf

@@ -1,0 +1,53 @@
+Upstream `figlet` snapshot provenance
+======================================
+
+Reference baseline: figlet 2.2.5 (cmatsuoka tree, last released 2012-04-08)
+Upstream source URL: https://github.com/cmatsuoka/figlet
+Upstream tag: v2.2.5
+Upstream tarball: ftp://ftp.figlet.org/pub/figlet/program/unix/figlet-2.2.5.tar.gz
+
+Status: DEFERRED (T085 in specs/00009-figlet-port/tasks.md)
+-------------------------------------------------------------
+
+Snapshot capture is currently deferred because the Windows development
+environment cannot run the upstream `figlet 2.2.5` binary natively. Capture
+MUST happen on a Linux host (Debian/Ubuntu `apt install figlet=2.2.5` or
+built-from-source) before SC-005 + SC-006 + FR-041 strict-mode byte-equal
+tests (T086, T087) can pass.
+
+Capture procedure (populated when T085 is executed)
+----------------------------------------------------
+
+Per-fixture metadata to record below this line (one block per snapshot):
+
+  - input message: ...
+  - upstream argv: figlet [flags] "<input>"
+  - capture host OS: <distro, kernel version>
+  - capture date (UTC): <YYYY-MM-DD>
+  - upstream figlet version (figlet -I 0): 2.2.5
+  - captured stdout path: outputs/<scenario>.stdout
+  - captured stderr path: outputs/<scenario>.stderr (if non-empty)
+  - captured exit code: <int>
+  - upstream package source: <Debian apt | Homebrew | source build>
+
+Snapshot minimum matrix (T085 + CHK001..CHK005)
+------------------------------------------------
+
+12 fonts × 5 input categories = 60 base fixtures + ≥20 layout-flag permutations
+on `standard` font (each `-k`/`-W`/`-S`/`-s`/`-o` solo + paired with
+`-c`/`-l`/`-r` + `-m N` for N ∈ {0, 24, 63}).
+
+Input categories per CHK002:
+  1. single-word
+  2. multi-word-with-space
+  3. empty
+  4. mixed-case
+  5. max-length-near-80-cols
+
+Each snapshot bundle includes a sibling manifests/<scenario>.toml file
+recording the full upstream argv, captured stdout/stderr paths, captured
+exit code, and capture provenance.
+
+Refresh policy: deliberate maintenance step on upstream version bump.
+NOT a silent CI refresh. Commit message tag convention: `[snapshot-refresh]`
+on any commit changing snapshot mtimes.

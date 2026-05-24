@@ -1,0 +1,146 @@
+#compdef rusty-figlet
+
+autoload -U is-at-least
+
+_rusty-figlet() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'-f+[]:FONT:_default' \
+'--font=[]:FONT:_default' \
+'*-d+[]:DIR:_files' \
+'*--fontdir=[]:DIR:_files' \
+'-w+[]:INT:_default' \
+'--width=[]:INT:_default' \
+'-m+[]:INT:_default' \
+'--layout-mode=[]:INT:_default' \
+'-C+[]:FILE:_files' \
+'--control-file=[]:FILE:_files' \
+'--color=[]:WHEN:((auto\:"Auto-detect from TTY status"
+always\:"Always emit color (still suppressed by NO_COLOR per FR-032)"
+never\:"Never emit color"))' \
+'-t[]' \
+'--terminal-width[]' \
+'-c[]' \
+'--center[]' \
+'-l[]' \
+'--left[]' \
+'-r[]' \
+'--right[]' \
+'-x[]' \
+'--font-default-justify[]' \
+'-k[]' \
+'--kerning[]' \
+'-W[]' \
+'--full-width[]' \
+'-S[]' \
+'--force-smush[]' \
+'-s[]' \
+'--smush[]' \
+'-o[]' \
+'--overlap[]' \
+'-p[]' \
+'--paragraph[]' \
+'-n[]' \
+'--normal[]' \
+'-N[]' \
+'--no-controlfile[]' \
+'--rainbow[]' \
+'--strict[]' \
+'--no-strict[]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::message:_default' \
+":: :_rusty-figlet_commands" \
+"*::: :->rusty-figlet" \
+&& ret=0
+    case $state in
+    (rusty-figlet)
+        words=($line[2] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:rusty-figlet-command-$line[2]:"
+        case $line[2] in
+            (completions)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+':shell -- Shell to generate completions for. One of `bash`, `zsh`, `fish`, `powershell`:(bash elvish fish powershell zsh)' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_rusty-figlet__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:rusty-figlet-help-command-$line[1]:"
+        case $line[1] in
+            (completions)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[_rusty-figlet_commands] )) ||
+_rusty-figlet_commands() {
+    local commands; commands=(
+'completions:Emit a shell-completion script for the named shell to stdout (FR-060 + US7 AS1). Generates the script via \`clap_complete\:\:generate\` against the binary'\''s own CLI surface' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'rusty-figlet commands' commands "$@"
+}
+(( $+functions[_rusty-figlet__subcmd__completions_commands] )) ||
+_rusty-figlet__subcmd__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'rusty-figlet completions commands' commands "$@"
+}
+(( $+functions[_rusty-figlet__subcmd__help_commands] )) ||
+_rusty-figlet__subcmd__help_commands() {
+    local commands; commands=(
+'completions:Emit a shell-completion script for the named shell to stdout (FR-060 + US7 AS1). Generates the script via \`clap_complete\:\:generate\` against the binary'\''s own CLI surface' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'rusty-figlet help commands' commands "$@"
+}
+(( $+functions[_rusty-figlet__subcmd__help__subcmd__completions_commands] )) ||
+_rusty-figlet__subcmd__help__subcmd__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'rusty-figlet help completions commands' commands "$@"
+}
+(( $+functions[_rusty-figlet__subcmd__help__subcmd__help_commands] )) ||
+_rusty-figlet__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'rusty-figlet help help commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_rusty-figlet" ]; then
+    _rusty-figlet "$@"
+else
+    compdef _rusty-figlet rusty-figlet
+fi

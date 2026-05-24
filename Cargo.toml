@@ -1,0 +1,67 @@
+[package]
+name = "rusty-figlet"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+authors = ["James Han <jsh562@users.noreply.github.com>"]
+license = "MIT OR Apache-2.0"
+description = "Render ASCII-art banners from text — a Rust port of cmatsuoka's `figlet(6)` v2.2.5 with an in-house FIGfont 2.0 parser, all six horizontal smush rules + universal, 12 bundled `.flf` fonts via `include_bytes!`, terminal-width-aware layout, color/rainbow output, byte-equal Strict-mode upstream compatibility, and a typed library API."
+repository = "https://github.com/jsh562/rusty-figlet"
+homepage = "https://github.com/jsh562/rusty-figlet"
+documentation = "https://docs.rs/rusty-figlet"
+readme = "README.md"
+keywords = ["figlet", "ascii-art", "banner", "cli", "toilet"]
+categories = ["command-line-utilities", "text-processing"]
+default-run = "rusty-figlet"
+
+[features]
+default = ["cli"]
+# `cli` gates the CLI-only dependencies so library consumers can depend on
+# rusty-figlet with `default-features = false` without pulling in clap /
+# clap_complete / anstyle / termcolor / terminal_size. Two-config matrix:
+#   * default = ["cli"]       → full CLI binary + library API
+#   * default-features = false → library only (thiserror + pure-Rust internals)
+# Per FR-051 + AD-001. NO companion-binary feature at v0.1.0 (single bin per
+# Constitution III + AD-001).
+cli = [
+    "dep:clap",
+    "dep:clap_complete",
+    "dep:anstyle",
+    "dep:termcolor",
+    "dep:terminal_size",
+]
+
+[dependencies]
+# Always-on: `FigletError` variants use thiserror derives.
+thiserror = "2"
+# CLI-only deps gated behind the `cli` feature.
+clap = { version = "4", features = ["derive"], optional = true }
+clap_complete = { version = "4", optional = true }
+anstyle = { version = "1", optional = true }
+termcolor = { version = "1", optional = true }
+terminal_size = { version = "0.4", optional = true }
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tempfile = "3"
+static_assertions = "1"
+trybuild = "1"
+
+[[bin]]
+name = "rusty-figlet"
+path = "src/main.rs"
+required-features = ["cli"]
+
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-{ target }{ archive-suffix }"
+bin-dir = "{ name }-v{ version }-{ target }/{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-fmt = "zip"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
