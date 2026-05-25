@@ -163,17 +163,55 @@ figlet-minimal = ["cli"]
   the `rusty-figlet` binary for ad-hoc rendering but never invoke any
   optional path.
 
-### `figlet-toilet-compat`
+### `figlet-color` (v0.2.x equivalent — retained)
 
 ```toml
-figlet-toilet-compat = ["cli", "color", "rainbow"]
+figlet-color = ["cli", "color", "rainbow"]
 ```
 
-- Includes `cli` + `color` + `rainbow` — covers the toilet `--gay` /
-  per-column rainbow aesthetic without the heavier Strict-mode parser or
-  the `-t` auto-detect.
-- Use case: a "modern figlet with the toilet color tricks" install that
+- Includes `cli` + `color` + `rainbow` — covers a per-column rainbow
+  gradient aesthetic reminiscent of toilet's `--gay` filter, without the
+  heavier Strict-mode parser or `-t` auto-detect.
+- Use case: a "modern figlet with color + gradient output" install that
   trims Strict-mode + `terminal_size` deps.
+- **v0.2.x semantics retained per AD-010** so users who used the v0.2.x
+  deprecated alias `figlet-toilet-compat = ["cli", "color", "rainbow"]`
+  have a single-name migration target (`figlet-color`).
+
+### `figlet-toilet-compat` (v0.3.0 BREAKING — restored to toilet parity)
+
+```toml
+figlet-toilet-compat = [
+    "cli",
+    "color",
+    "rainbow",
+    "tlf-parser",
+    "filter-crop",
+    "filter-gay",
+    "filter-metal",
+    "filter-flip",
+    "filter-flop",
+    "filter-rotate",
+    "filter-border",
+]
+```
+
+- **v0.2.0 / v0.2.1 (deprecated)**: alias for `figlet-color` (same set as
+  `cli + color + rainbow`). v0.2.0 named this bundle aspirationally
+  before the toilet capability surface existed.
+- **v0.3.0 (this version)**: restored to mean ACTUAL toilet capability
+  parity per E012 spec. Composes the v0.2.x `cli + color + rainbow`
+  baseline + the new v0.3.0 toilet-parity leaves: TLF parser, all 10
+  filters (`crop`, `gay`, `metal`, `flip`, `flop`, `rotate{180,left,right}`,
+  `border`).
+- Intentionally NOT in this bundle: `output-html`, `output-irc`,
+  `output-svg`, `color-truecolor`, `color-256`, `toilet-strict-compat` —
+  these are orthogonal capabilities (export formats and byte-equal
+  upstream-compat mode) that users opt into individually.
+- This is the v0.3.0 BREAKING for that specific feature bundle name
+  (documented in `CHANGELOG.md` `[0.3.0] ### Changed (BREAKING)`). The
+  overall public library API is additive-only — verified by
+  `cargo public-api diff` in CI per SC-009.
 
 ### `figlet-full-cli` (= `full` umbrella alias for self-documentation)
 
@@ -228,7 +266,8 @@ Per plan §Per-Port v0.2.0 CI Matrix:
 - **Tier 3 — `test-<bundle>`**: one job per preset bundle. Linux only.
   - `test-figlet-classic`
   - `test-figlet-minimal`
-  - `test-figlet-toilet-compat`
+  - `test-figlet-color`
+  - `test-figlet-toilet-compat` (back-compat verification for deprecated alias)
 - **Tier 4 — `check-leaf-<leaf>`**: one job per leaf. Linux only.
   - `check-leaf-color`
   - `check-leaf-rainbow`

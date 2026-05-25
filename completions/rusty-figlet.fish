@@ -1,6 +1,6 @@
 # Print an optspec for argparse to handle cmd's options that are independent of any subcommand.
 function __fish_rusty_figlet_global_optspecs
-	string join \n f/font= d/fontdir= w/width= t/terminal-width c/center l/left r/right x/font-default-justify k/kerning W/full-width S/force-smush s/smush o/overlap m/layout-mode= p/paragraph n/normal C/control-file= N/no-controlfile color= rainbow strict no-strict h/help V/version
+	string join \n f/font= d/fontdir= w/width= t/terminal-width c/center l/left r/right x/font-default-justify k/kerning W/full-width S/force-smush s/smush o/overlap m/layout-mode= p/paragraph n/normal C/control-file= N/no-controlfile color= rainbow F/filter= E/export= truecolor ansi256 background= no-downgrade-warning warn-irc-strip strict no-strict h/help V/version
 end
 
 function __fish_rusty_figlet_needs_command
@@ -32,6 +32,9 @@ complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -s C -l control-
 complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -l color -r -f -a "auto\t'Auto-detect from TTY status'
 always\t'Always emit color (still suppressed by NO_COLOR per FR-032)'
 never\t'Never emit color'"
+complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -s F -l filter -d 'Toilet-compatible filter chain (`-F filter1:filter2:...`)' -r
+complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -s E -l export -d 'Export the rendered banner as `html`, `irc`, or `svg` (E012 US2 — FR-005, T061). Gated by any `output-*` leaf' -r
+complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -l background -d 'Background color spec — `<name>` (one of the 16 ANSI colors) or `#RRGGBB` (E012 US7 — SC-007, T063)' -r
 complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -s t -l terminal-width
 complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -s c -l center
 complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -s l -l left
@@ -46,6 +49,10 @@ complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -s p -l paragrap
 complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -s n -l normal
 complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -s N -l no-controlfile
 complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -l rainbow
+complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -l truecolor -d 'Force 24-bit truecolor SGR (E012 US4 — FR-008, T062)'
+complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -l ansi256 -d 'Force 256-color SGR (E012 US4 — FR-009, T062)'
+complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -l no-downgrade-warning -d 'Suppress the one-time downgrade-warning stderr line (E012 US4 — FR-029, T062)'
+complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -l warn-irc-strip -d 'Warn when IRC-format export strips a non-printable byte (E012 US2 — FR-015 ergonomics, T061)'
 complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -l strict
 complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -l no-strict
 complete -c rusty-figlet -n "__fish_rusty_figlet_needs_command" -s h -l help -d 'Print help (see more with \'--help\')'

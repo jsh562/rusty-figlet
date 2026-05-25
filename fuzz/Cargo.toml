@@ -1,0 +1,66 @@
+# E012 Phase 7 — cargo-fuzz workspace for rusty-figlet (T049).
+#
+# This crate is intentionally NOT a member of the main rusty-figlet
+# workspace. Per the spec critical-correctness note 4, the fuzz harness
+# lives in an isolated cargo workspace so:
+#   1. `cargo build --workspace` from the main crate doesn't pull in
+#      libfuzzer (Linux-only, unusable on Windows hosts).
+#   2. `cargo install rusty-figlet` doesn't try to compile fuzz targets.
+#   3. CI's per-leaf check matrix doesn't have to special-case
+#      `fuzz/` paths.
+#
+# To run a fuzz target (Linux only, requires `cargo install cargo-fuzz`):
+#   cd fuzz
+#   cargo +nightly fuzz run html_escape
+#
+# The harness is structurally complete here so CI can declare it; actual
+# fuzz execution is a CI-only activity per the task constraints.
+
+[package]
+name = "rusty-figlet-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+
+[package.metadata]
+cargo-fuzz = true
+
+# Empty `[workspace]` table makes this crate its own workspace root —
+# the main rusty-figlet workspace will not absorb it.
+[workspace]
+
+[dependencies]
+# libfuzzer-sys is gated behind cargo-fuzz; declared here only so the
+# target executables can build. NOT exercised on Windows.
+libfuzzer-sys = { version = "0.4", optional = true }
+rusty-figlet = { path = "..", default-features = false, features = ["tlf-parser", "output-html", "filter-crop", "filter-flip", "filter-flop", "filter-rotate", "filter-border", "filter-gay", "filter-metal"] }
+
+[features]
+default = []
+# Toggle libfuzzer integration. Only used when running under cargo-fuzz;
+# leaving the default off means a plain `cargo check` on this crate
+# compiles the target modules as ordinary binaries without libfuzzer.
+fuzz-runtime = ["dep:libfuzzer-sys"]
+
+[[bin]]
+name = "tlf_parser"
+path = "fuzz_targets/tlf_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "filter_chain_parse"
+path = "fuzz_targets/filter_chain_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "html_escape"
+path = "fuzz_targets/html_escape.rs"
+test = false
+doc = false
+bench = false

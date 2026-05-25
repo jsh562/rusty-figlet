@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="42" version="1.1">
+  <text x="0" y="14" font-family="monospace" font-size="12" xml:space="preserve"><tspan fill="#C0C0C0">┌────────────────────────────────┐</tspan></text>
+  <text x="0" y="28" font-family="monospace" font-size="12" xml:space="preserve"><tspan fill="#C0C0C0">│</tspan><tspan fill="#008080">R       U       S       T       </tspan><tspan fill="#C0C0C0">│</tspan></text>
+  <text x="0" y="42" font-family="monospace" font-size="12" xml:space="preserve"><tspan fill="#C0C0C0">└────────────────────────────────┘</tspan></text>
+</svg>

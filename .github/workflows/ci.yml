@@ -189,8 +189,22 @@ jobs:
       - run: cargo build --no-default-features --features figlet-minimal
       - run: cargo test --no-default-features --features figlet-minimal --lib
 
+  test-figlet-color:
+    name: test-figlet-color (linux-x86_64)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --no-default-features --features figlet-color
+      - run: cargo test --no-default-features --features figlet-color --lib
+
+  # Back-compat verification: the deprecated `figlet-toilet-compat` alias
+  # must continue to resolve to the same feature set as `figlet-color`.
+  # Remove this job when the alias is removed in a future breaking release.
   test-figlet-toilet-compat:
-    name: test-figlet-toilet-compat (linux-x86_64)
+    name: test-figlet-toilet-compat (deprecated alias)
     needs: [fmt, clippy]
     runs-on: ubuntu-latest
     steps:
@@ -253,6 +267,149 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --no-default-features --features "cli strict-compat"
+
+  # E012 v0.3.0 — 14 new leaf checks per ADR-0006 + spec 00012 FR-020 +
+  # SC-008. Auto-discoverable from Cargo.toml by `tools/feature-lint/run.sh`.
+
+  check-leaf-tlf-parser:
+    name: check-leaf-tlf-parser (linux-x86_64)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --no-default-features --features "cli tlf-parser"
+
+  check-leaf-filter-crop:
+    name: check-leaf-filter-crop (linux-x86_64)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --no-default-features --features "cli filter-crop"
+
+  check-leaf-filter-gay:
+    name: check-leaf-filter-gay (linux-x86_64)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --no-default-features --features "cli filter-gay"
+
+  check-leaf-filter-metal:
+    name: check-leaf-filter-metal (linux-x86_64)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --no-default-features --features "cli filter-metal"
+
+  check-leaf-filter-flip:
+    name: check-leaf-filter-flip (linux-x86_64)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --no-default-features --features "cli filter-flip"
+
+  check-leaf-filter-flop:
+    name: check-leaf-filter-flop (linux-x86_64)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --no-default-features --features "cli filter-flop"
+
+  check-leaf-filter-rotate:
+    name: check-leaf-filter-rotate (linux-x86_64)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --no-default-features --features "cli filter-rotate"
+
+  check-leaf-filter-border:
+    name: check-leaf-filter-border (linux-x86_64)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --no-default-features --features "cli filter-border"
+
+  check-leaf-color-truecolor:
+    name: check-leaf-color-truecolor (linux-x86_64)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --no-default-features --features "cli color-truecolor"
+
+  check-leaf-color-256:
+    name: check-leaf-color-256 (linux-x86_64)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --no-default-features --features "cli color-256"
+
+  check-leaf-output-html:
+    name: check-leaf-output-html (linux-x86_64)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --no-default-features --features "cli output-html"
+
+  check-leaf-output-irc:
+    name: check-leaf-output-irc (linux-x86_64)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --no-default-features --features "cli output-irc"
+
+  check-leaf-output-svg:
+    name: check-leaf-output-svg (linux-x86_64)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --no-default-features --features "cli output-svg"
+
+  check-leaf-toilet-strict-compat:
+    name: check-leaf-toilet-strict-compat (linux-x86_64)
+    needs: [fmt, clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --no-default-features --features "cli toilet-strict-compat"
 
   # -----------------------------------------------------------------------------
   # Tier 5 — lint-convention: feature-lint script is vendored into the port
@@ -317,6 +474,54 @@ jobs:
           echo "convention-lint-self-test: PASS"
 
   # -----------------------------------------------------------------------------
+  # SC-014 runtime-assertion stub (E012 Phase 12 T082).
+  #
+  # Per spec 00012 SC-014 + plan.md HINT-002, the CI wall-clock for the
+  # longest-path job MUST stay under 25 minutes; if exceeded the gate fails
+  # (NOT warn-only) per the "never silently exceed" rule.
+  #
+  # This job is currently a STUB (`if: false` -> never runs) installed for
+  # visibility. Full implementation is deferred to v0.3.x maintenance.
+  #
+  # Planned logic (one of two approaches):
+  #
+  #   (a) Query GitHub Actions API for the in-progress workflow run via
+  #       `gh run view ${{ github.run_id }} --json jobs`; compute
+  #       max(completed_at - started_at) across all sibling jobs in this
+  #       workflow run; exit 1 if > 25 minutes.
+  #
+  #   (b) Each upstream job records its start+end timestamps as a workflow
+  #       artifact (e.g. `time-start.txt`, `time-end.txt`); this job
+  #       downloads all artifacts, computes per-job wall-clock, finds the
+  #       max, and exits 1 if > 25 minutes.
+  #
+  # Approach (b) is simpler (no PAT / API auth needed) and is the planned
+  # implementation path. See docs/ci-runtime-baseline.md §8 for the full
+  # strategy. The stub `if: false` keeps the workflow valid until the
+  # full implementation lands without consuming a runner-minute every PR.
+  # -----------------------------------------------------------------------------
+  ci-runtime-assertion:
+    name: ci-runtime-assertion (SC-014)
+    if: false  # STUB: not yet enabled; full implementation deferred to v0.3.x.
+    needs:
+      - test-default
+      - test-no-default
+      - test-figlet-classic
+      - test-figlet-minimal
+      - test-figlet-color
+      - test-figlet-toilet-compat
+      - lint-convention
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assert wall-clock under 25-min HARD gate
+        run: |
+          # Placeholder. When this job is enabled, implement approach (b)
+          # documented in docs/ci-runtime-baseline.md §8: download per-job
+          # timing artifacts, compute max wall-clock, exit 1 if > 25 min.
+          echo "ci-runtime-assertion stub (not yet implemented)"
+          exit 0
+
+  # -----------------------------------------------------------------------------
   # Publish-dry-run + final gate. Runs after every tier above.
   # -----------------------------------------------------------------------------
   publish-dry-run:
@@ -331,6 +536,7 @@ jobs:
       - test-no-default
       - test-figlet-classic
       - test-figlet-minimal
+      - test-figlet-color
       - test-figlet-toilet-compat
       - check-leaf-color
       - check-leaf-rainbow

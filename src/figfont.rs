@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::error::FigletError;
+use crate::header;
 
 /// Required codepoints that every FIGfont MUST define (ASCII 32..=126
 /// plus seven German chars).
@@ -230,80 +231,20 @@ fn parse_header(line: &str, line_no: u32) -> Result<Header, FigletError> {
     if !line.starts_with("flf2a") {
         return Err(parse_err("bad signature: expected flf2a prefix", line_no));
     }
-    let rest = &line["flf2a".len()..];
-    // First char after `flf2a` is the hardblank; remaining whitespace-
-    // separated tokens are the integer fields.
-    let mut chars = rest.chars();
-    let hardblank = chars
-        .next()
-        .ok_or_else(|| parse_err("truncated header: missing hardblank", line_no))?;
-    let tail: String = chars.collect();
-    let mut tokens = tail.split_whitespace();
-
-    let height = next_u32(&mut tokens, "height", line_no)?;
-    let baseline = next_u32(&mut tokens, "baseline", line_no)?;
-    let max_length = next_u32(&mut tokens, "max_length", line_no)?;
-    let old_layout = next_i32(&mut tokens, "old_layout", line_no)?;
-    if !(-1..=63).contains(&old_layout) {
-        return Err(parse_err(
-            &format!("old_layout out of -1..=63 range: {old_layout}"),
-            line_no,
-        ));
-    }
-    let comment_lines = next_u32(&mut tokens, "comment_lines", line_no)?;
-    let print_direction = next_u32_opt(&mut tokens).unwrap_or(0);
-    // Derive default from old_layout per FIGfont 2.0 spec when omitted.
-    let derived_full_layout = if old_layout < 0 { 0 } else { old_layout as u32 };
-    let full_layout = next_u32_opt(&mut tokens).unwrap_or(derived_full_layout);
-    let codetag_count = next_u32_opt(&mut tokens).unwrap_or(0);
-
+    // Delegate numeric-field parsing to the shared header reader (AD-001).
+    // FR-028: header.rs preserves O(1) error-cost contract.
+    let nh = header::parse_header_line(line, "flf2a".len(), line_no)?;
     Ok(Header {
-        hardblank,
-        height,
-        baseline,
-        max_length,
-        old_layout,
-        comment_lines,
-        print_direction,
-        full_layout,
-        codetag_count,
+        hardblank: nh.hardblank,
+        height: nh.height,
+        baseline: nh.baseline,
+        max_length: nh.max_length,
+        old_layout: nh.old_layout,
+        comment_lines: nh.comment_lines,
+        print_direction: nh.print_direction,
+        full_layout: nh.full_layout,
+        codetag_count: nh.codetag_count,
     })
-}
-
-fn next_u32(
-    tokens: &mut std::str::SplitWhitespace<'_>,
-    field: &str,
-    line_no: u32,
-) -> Result<u32, FigletError> {
-    let tok = tokens
-        .next()
-        .ok_or_else(|| parse_err(&format!("truncated header: missing {field}"), line_no))?;
-    tok.parse::<u32>().map_err(|_| {
-        parse_err(
-            &format!("truncated header: {field} not a u32 ({tok})"),
-            line_no,
-        )
-    })
-}
-
-fn next_i32(
-    tokens: &mut std::str::SplitWhitespace<'_>,
-    field: &str,
-    line_no: u32,
-) -> Result<i32, FigletError> {
-    let tok = tokens
-        .next()
-        .ok_or_else(|| parse_err(&format!("truncated header: missing {field}"), line_no))?;
-    tok.parse::<i32>().map_err(|_| {
-        parse_err(
-            &format!("truncated header: {field} not an i32 ({tok})"),
-            line_no,
-        )
-    })
-}
-
-fn next_u32_opt(tokens: &mut std::str::SplitWhitespace<'_>) -> Option<u32> {
-    tokens.next().and_then(|tok| tok.parse::<u32>().ok())
 }
 
 /// Read exactly `height` glyph lines from `lines`, advancing

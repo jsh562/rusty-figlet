@@ -35,7 +35,7 @@ _rusty-figlet() {
 
     case "${cmd}" in
         rusty__figlet)
-            opts="-f -d -w -t -c -l -r -x -k -W -S -s -o -m -p -n -C -N -h -V --font --fontdir --width --terminal-width --center --left --right --font-default-justify --kerning --full-width --force-smush --smush --overlap --layout-mode --paragraph --normal --control-file --no-controlfile --color --rainbow --strict --no-strict --help --version [MESSAGE]... completions help"
+            opts="-f -d -w -t -c -l -r -x -k -W -S -s -o -m -p -n -C -N -F -E -h -V --font --fontdir --width --terminal-width --center --left --right --font-default-justify --kerning --full-width --force-smush --smush --overlap --layout-mode --paragraph --normal --control-file --no-controlfile --color --rainbow --filter --export --truecolor --ansi256 --background --no-downgrade-warning --warn-irc-strip --strict --no-strict --help --version [MESSAGE]... completions help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -83,6 +83,26 @@ _rusty-figlet() {
                     ;;
                 --color)
                     COMPREPLY=($(compgen -W "auto always never" -- "${cur}"))
+                    return 0
+                    ;;
+                --filter)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -F)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --export)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -E)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --background)
+                    COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
                 *)

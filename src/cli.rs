@@ -107,6 +107,74 @@ pub struct Cli {
     #[arg(long = "no-strict")]
     pub no_strict: bool,
 
+    /// Toilet-compatible filter chain (`-F filter1:filter2:...`). E012 US1.
+    ///
+    /// Multiple `-F` flags are concatenated with `:` per FR-002 before parsing.
+    /// Gated by any `filter-*` leaf (in practice: visible whenever the binary
+    /// is compiled with at least one filter leaf enabled — see Cargo.toml).
+    #[cfg(any(
+        feature = "filter-crop",
+        feature = "filter-gay",
+        feature = "filter-metal",
+        feature = "filter-flip",
+        feature = "filter-flop",
+        feature = "filter-rotate",
+        feature = "filter-border",
+    ))]
+    #[arg(short = 'F', long = "filter", value_name = "CHAIN")]
+    pub filter: Vec<String>,
+
+    /// Export the rendered banner as `html`, `irc`, or `svg` (E012 US2 — FR-005).
+    ///
+    /// Visible when at least one `output-*` leaf is enabled. Unknown values
+    /// (or values whose leaf is not compiled in) exit non-zero with the
+    /// enumerated available list per FR-016.
+    #[cfg(any(
+        feature = "output-html",
+        feature = "output-irc",
+        feature = "output-svg",
+    ))]
+    #[arg(short = 'E', long = "export", value_name = "FORMAT")]
+    pub export_format: Option<String>,
+
+    /// Force 24-bit truecolor SGR emission (E012 US4 — FR-008).
+    ///
+    /// Gated by the `color-truecolor` leaf. When the terminal does not
+    /// advertise truecolor support the request downgrades gracefully unless
+    /// `--no-downgrade-warning` is also set.
+    #[cfg(feature = "color-truecolor")]
+    #[arg(long = "truecolor")]
+    pub truecolor: bool,
+
+    /// Force 256-color SGR emission (E012 US4 — FR-009).
+    ///
+    /// Gated by the `color-256` leaf.
+    #[cfg(feature = "color-256")]
+    #[arg(long = "ansi256")]
+    pub ansi256: bool,
+
+    /// Background color spec — one of the 16 named ANSI colors or `#RRGGBB`
+    /// hex (E012 US7 — SC-007). Parsed BEFORE export emit; arbitrary user
+    /// bytes never flow into a color slot per spec Edge Cases.
+    #[cfg(feature = "color")]
+    #[arg(long = "background", value_name = "COLOR")]
+    pub background: Option<String>,
+
+    /// Suppress the one-time downgrade-warning stderr line when the
+    /// requested color depth is unavailable (E012 US4 — FR-029).
+    ///
+    /// FR-029 zero-cost: the suppression short-circuits BEFORE the warning's
+    /// format-args evaluation per `color_depth::resolve_depth`.
+    #[cfg(any(feature = "color-truecolor", feature = "color-256"))]
+    #[arg(long = "no-downgrade-warning")]
+    pub no_downgrade_warning: bool,
+
+    /// Warn when IRC-format export strips a non-printable byte from the
+    /// input (E012 US2 — FR-015 ergonomics knob).
+    #[cfg(feature = "output-irc")]
+    #[arg(long = "warn-irc-strip")]
+    pub warn_irc_strip: bool,
+
     /// Positional message text (concatenated with a single space per FR-002).
     #[arg(value_name = "MESSAGE", trailing_var_arg = true)]
     pub message: Vec<String>,

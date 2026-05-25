@@ -34,3 +34,17 @@ The 12 bundled `.flf` files under `assets/fonts/` were generated as syntacticall
 ## Updating attributions
 
 When swapping a placeholder for the upstream verbatim font, update the corresponding row's "Original Author" cell from "unknown" to the value preserved in the upstream `.flf` comment header (typically lines 2–N after the `flf2a...` header line). Do NOT remove or modify the attribution rows of fonts whose upstream verbatim source is already shipped.
+
+## Bundled TLF (`.tlf`) Attribution — v0.3.0
+
+E012 (Phase 3 — T013) introduces TLF (`tlf2a`) font support per FR-001 + AD-006. Three placeholder `.tlf` font files are bundled under `assets/fonts/` for the v0.3.0 release; full attribution will follow once verbatim or original-art TLF fonts are sourced. The placeholders are **NOT** derived from toilet's upstream `.tlf` files — per E012's clean-room derivation policy (see `docs/tlf-derivation.md`), no upstream toilet source code or fonts have been consulted.
+
+| Font | File | Status | License | Source |
+|------|------|--------|---------|--------|
+| `mono9` | `assets/fonts/mono9.tlf` | Placeholder (rusty-figlet generated, original) | MIT OR Apache-2.0 | `tools/gen-placeholder-tlf.py` |
+| `future` | `assets/fonts/future.tlf` | Placeholder (rusty-figlet generated, original) | MIT OR Apache-2.0 | `tools/gen-placeholder-tlf.py` |
+| `pagga` | `assets/fonts/pagga.tlf` | Placeholder (rusty-figlet generated, original) | MIT OR Apache-2.0 | `tools/gen-placeholder-tlf.py` |
+
+The placeholder `.tlf` files are syntactically-valid `tlf2a` documents: height=1, max_length=8, hardblank=`$`, endmark=`@`, 95 ASCII glyphs (codepoints 32..=126). Each carries a `[PLACEHOLDER]` marker inside its TLF comment block (preserved verbatim by the parser per FIGfont 2.0 §1, which TLF inherits). The names `mono9`, `future`, `pagga` are observed-in-the-wild toilet font names referenced for naming-familiarity only; the glyph art is original-to-rusty-figlet placeholder, NOT a derivative of any upstream font.
+
+When original-art or cleanly-licensed third-party `.tlf` replacements are sourced post-v0.3.0, update the corresponding row's "Status" / "License" / "Source" cells. The status MUST NOT be changed to "verbatim upstream" unless a separate clean-room review confirms permissibility.

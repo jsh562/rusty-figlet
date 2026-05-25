@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="42" version="1.1">
+  <text x="0" y="14" font-family="monospace" font-size="12" xml:space="preserve"><tspan fill="#C0C0C0">┌────────────────┐</tspan></text>
+  <text x="0" y="28" font-family="monospace" font-size="12" xml:space="preserve"><tspan fill="#C0C0C0">│</tspan><tspan fill="#FF0000">h</tspan><tspan fill="#FF6000"> </tspan><tspan fill="#FFBF00"> </tspan><tspan fill="#DFFF00"> </tspan><tspan fill="#80FF00"> </tspan><tspan fill="#20FF00"> </tspan><tspan fill="#00FF40"> </tspan><tspan fill="#00FF9F"> </tspan><tspan fill="#00FFFF">i</tspan><tspan fill="#009FFF"> </tspan><tspan fill="#0040FF"> </tspan><tspan fill="#2000FF"> </tspan><tspan fill="#8000FF"> </tspan><tspan fill="#DF00FF"> </tspan><tspan fill="#FF00BF"> </tspan><tspan fill="#FF0060"> </tspan><tspan fill="#C0C0C0">│</tspan></text>
+  <text x="0" y="42" font-family="monospace" font-size="12" xml:space="preserve"><tspan fill="#C0C0C0">└────────────────┘</tspan></text>
+</svg>

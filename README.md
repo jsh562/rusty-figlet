@@ -1,8 +1,8 @@
 # rusty-figlet
 
-<!-- BANNER:v0.2.0 -->
-> **BREAKING (v0.2.0)**: Feature layout reorganized — see CHANGELOG for migration table.
-<!-- /BANNER:v0.2.0 -->
+<!-- BANNER:v0.3.0 -->
+> **BREAKING (v0.3.0)**: Toilet feature parity added — TLF parser, 10 filters, HTML/IRC/SVG export. See CHANGELOG for migration.
+<!-- /BANNER:v0.3.0 -->
 
 [![crates.io](https://img.shields.io/crates/v/rusty-figlet.svg)](https://crates.io/crates/rusty-figlet)
 [![docs.rs](https://docs.rs/rusty-figlet/badge.svg)](https://docs.rs/rusty-figlet)
@@ -96,11 +96,25 @@ For library-only consumers without CLI deps, see the [Cargo Features](#cargo-fea
 
 | Feature | Description | Umbrella(s) |
 |---|---|---|
-| `color` | ANSI/SGR color writer (`--color=auto|always|never`). Pulls `anstyle` + `termcolor`. | `full`, `figlet-toilet-compat` |
-| `rainbow` | Per-column HSV rainbow gradient (`--rainbow`, toilet-style). Implies `color`. | `full`, `figlet-toilet-compat` |
+| `color` | ANSI/SGR color writer (`--color=auto|always|never`). Pulls `anstyle` + `termcolor`. | `full`, `figlet-color`, `figlet-toilet-compat` |
+| `rainbow` | Per-column HSV rainbow gradient (`--rainbow`, toilet-style). Implies `color`. | `full`, `figlet-color`, `figlet-toilet-compat` |
 | `terminal-width` | `-t` auto-detect via `terminal_size`. Without this leaf only an explicit `-w` value (or the 80-col fallback) applies. | `full` |
 | `completions` | `completions <shell>` subcommand emitting bash/zsh/fish/powershell scripts. Pulls `clap_complete`. | `full` |
-| `strict-compat` | Hand-rolled upstream-byte-equal getopt parser + `--strict` dispatch path. | `full`, `figlet-classic` |
+| `strict-compat` | Hand-rolled upstream-byte-equal getopt parser + `--strict` dispatch path (figlet 2.2.5 target). | `full`, `figlet-classic` |
+| `tlf-parser` | TheLetter (`.tlf`) font-format parser per `tlf2a` magic. Adds `Figlet::from_tlf` + `Figlet::from_tlf_bytes`. | `full`, `figlet-toilet-compat` |
+| `filter-crop` | `Filter::Crop` — trim all-blank rows/cols. | `full`, `figlet-toilet-compat` |
+| `filter-gay` | `Filter::Gay` — per-column rainbow palette sweep (toilet `--gay`). | `full`, `figlet-toilet-compat` |
+| `filter-metal` | `Filter::Metal` — blue/gray metallic gradient. | `full`, `figlet-toilet-compat` |
+| `filter-flip` | `Filter::Flip` — horizontal mirror (reverse each row). | `full`, `figlet-toilet-compat` |
+| `filter-flop` | `Filter::Flop` — vertical mirror (reverse row order). | `full`, `figlet-toilet-compat` |
+| `filter-rotate` | `Filter::Rotate180`, `RotateLeft`, `RotateRight` — three rotations share one leaf. | `full`, `figlet-toilet-compat` |
+| `filter-border` | `Filter::Border` — Unicode box-drawing wrap. | `full`, `figlet-toilet-compat` |
+| `color-truecolor` | 24-bit SGR emission (`\x1b[38;2;R;G;Bm`). Implies `color`. Enables `--truecolor`. | `full` |
+| `color-256` | 256-color SGR emission (`\x1b[38;5;Nm`). Implies `color`. Enables `--ansi256`. | `full` |
+| `output-html` | HTML5 export with inline-CSS spans (`-E html`). Safe-to-embed: 4-char XSS escape applied to all text + double-quoted attributes per spec Security Posture. | `full` |
+| `output-irc` | mIRC `^C` color code export (`-E irc`). C0/C1 non-printables stripped per FR-015. | `full` |
+| `output-svg` | SVG 1.1 `<text>` export (`-E svg`). Safe-to-embed: same 4-char XSS escape table as `output-html`; no `<script>`/`<foreignObject>`/`xlink:href`/`href` emission. | `full` |
+| `toilet-strict-compat` | Byte-equal-to-toilet-0.3-1 strict-render path (`--strict`). 16-color floor; same XSS / IRC-strip defenses as the default path. | `full` |
 
 ### Preset bundles
 
@@ -108,7 +122,12 @@ For library-only consumers without CLI deps, see the [Cargo Features](#cargo-fea
 |---|---|---|
 | `figlet-classic` | `cli` + `strict-compat` | Drop-in upstream `figlet 2.2.5` replacement. No color, no rainbow, no terminal-width auto-detect, no completions subcommand. |
 | `figlet-minimal` | `cli` | Bare-bones binary — no Strict mode, no extras. Smallest functional CLI. |
-| `figlet-toilet-compat` | `cli` + `color` + `rainbow` | Modern figlet with the toilet `--gay` per-column gradient aesthetic; no Strict mode or `-t` auto-detect. |
+| `figlet-color` | `cli` + `color` + `rainbow` | Modern figlet with color + per-column gradient output; no Strict mode or `-t` auto-detect. Retained at v0.2.x semantics per AD-010 for users who relied on the v0.2.x `figlet-toilet-compat` deprecated alias. |
+| `figlet-toilet-compat` (**v0.3.0 BREAKING**) | `cli` + `color` + `rainbow` + `tlf-parser` + `filter-crop` + `filter-gay` + `filter-metal` + `filter-flip` + `filter-flop` + `filter-rotate` + `filter-border` | **v0.3.0 semantics restored** — actual toilet capability parity: TLF font loading + all 10 filters + color/rainbow. v0.2.x users who relied on this name as an alias for `figlet-color` should migrate to `figlet-color` (unchanged). HTML/IRC/SVG export + truecolor + strict-compat-toilet are intentionally NOT in this bundle (opt-in only — orthogonal capabilities). |
+
+### Safe-to-embed HTML/SVG guarantee
+
+The `output-html` and `output-svg` backends apply a hand-rolled 4-character XSS escape (`<` → `&lt;`, `>` → `&gt;`, `&` → `&amp;`, `"` → `&quot;`) to every text-content byte AND every double-quoted attribute value. SVG additionally never emits `<script>`, `<foreignObject>`, `href`, `xlink:href`, or `<image href=...>` slots — no path exists from a user-controlled byte into a script-execution context. The `--background` CLI flag accepts only the 16 named ANSI colors or `#RRGGBB` hex; anything else (newlines, ANSI escape bytes, shell metachars, partial hex) is rejected at parse time before any export emission. See `src/export/html.rs` and `src/export/svg.rs` for the implementations; `tests/export_integration.rs` for the XSS-payload + UTF-8 + bidirectional script coverage.
 
 ### Keep-list workaround (Cargo features are union-only)
 

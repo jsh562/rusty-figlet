@@ -28,6 +28,11 @@ _rusty-figlet() {
 '--color=[]:WHEN:((auto\:"Auto-detect from TTY status"
 always\:"Always emit color (still suppressed by NO_COLOR per FR-032)"
 never\:"Never emit color"))' \
+'*-F+[Toilet-compatible filter chain (\`-F filter1\:filter2\:...\`)]:CHAIN:_default' \
+'*--filter=[Toilet-compatible filter chain (\`-F filter1\:filter2\:...\`)]:CHAIN:_default' \
+'-E+[Export the rendered banner as \`html\`, \`irc\`, or \`svg\` (E012 US2 — FR-005, T061). Gated by any \`output-*\` leaf]:FORMAT:_default' \
+'--export=[Export the rendered banner as \`html\`, \`irc\`, or \`svg\` (E012 US2 — FR-005, T061). Gated by any \`output-*\` leaf]:FORMAT:_default' \
+'--background=[Background color spec — \`<name>\` (one of the 16 ANSI colors) or \`#RRGGBB\` (E012 US7 — SC-007, T063)]:COLOR:_default' \
 '-t[]' \
 '--terminal-width[]' \
 '-c[]' \
@@ -55,6 +60,10 @@ never\:"Never emit color"))' \
 '-N[]' \
 '--no-controlfile[]' \
 '--rainbow[]' \
+'--truecolor[Force 24-bit truecolor SGR (E012 US4 — FR-008, T062)]' \
+'--ansi256[Force 256-color SGR (E012 US4 — FR-009, T062)]' \
+'--no-downgrade-warning[Suppress the one-time downgrade-warning stderr line (E012 US4 — FR-029, T062)]' \
+'--warn-irc-strip[Warn when IRC-format export strips a non-printable byte (E012 US2 — FR-015 ergonomics, T061)]' \
 '--strict[]' \
 '--no-strict[]' \
 '-h[Print help (see more with '\''--help'\'')]' \

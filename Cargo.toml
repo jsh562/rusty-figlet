@@ -1,11 +1,11 @@
 [package]
 name = "rusty-figlet"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.85"
 authors = ["James Han <jsh562@users.noreply.github.com>"]
 license = "MIT OR Apache-2.0"
-description = "Render ASCII-art banners from text — a Rust port of cmatsuoka's `figlet(6)` v2.2.5 with an in-house FIGfont 2.0 parser, all six horizontal smush rules + universal, 12 bundled `.flf` fonts via `include_bytes!`, terminal-width-aware layout, color/rainbow output, byte-equal Strict-mode upstream compatibility, and a typed library API. v0.2: feature layout reorganized — see CHANGELOG."
+description = "Render ASCII-art banners from text — a Rust port of cmatsuoka's `figlet(6)` v2.2.5 with an in-house FIGfont 2.0 parser, all six horizontal smush rules + universal, 12 bundled `.flf` fonts via `include_bytes!`, terminal-width-aware layout, color/rainbow output, byte-equal Strict-mode upstream compatibility, and a typed library API. v0.2: feature layout reorganized — see CHANGELOG. v0.3: toilet feature parity — TLF parser, 10 filters, HTML/IRC/SVG export, truecolor — see CHANGELOG."
 repository = "https://github.com/jsh562/rusty-figlet"
 homepage = "https://github.com/jsh562/rusty-figlet"
 documentation = "https://docs.rs/rusty-figlet"
@@ -45,13 +45,34 @@ default-run = "rusty-figlet"
 default = ["full"]
 
 # Umbrella: every leaf enabled. Kitchen sink for `cargo install` casual users.
+# v0.3.0 surface: 5 v0.2.x leaves + 14 new v0.3.0 leaves = 19 leaves total.
 full = [
+    # v0.2.x leaves (unchanged semantics).
     "cli",
     "color",
     "rainbow",
     "terminal-width",
     "completions",
     "strict-compat",
+    # v0.3.0 — TLF parser.
+    "tlf-parser",
+    # v0.3.0 — 7 filter-* leaves (10 filters; rotate180/left/right share one).
+    "filter-crop",
+    "filter-gay",
+    "filter-metal",
+    "filter-flip",
+    "filter-flop",
+    "filter-rotate",
+    "filter-border",
+    # v0.3.0 — color depth leaves.
+    "color-truecolor",
+    "color-256",
+    # v0.3.0 — export backend leaves.
+    "output-html",
+    "output-irc",
+    "output-svg",
+    # v0.3.0 — toilet 0.3-1 byte-equal strict-compat mode.
+    "toilet-strict-compat",
 ]
 
 # Umbrella: all CLI-only deps + modules. Library consumers strip this via
@@ -67,9 +88,40 @@ figlet-classic = ["cli", "strict-compat"]
 # Preset bundle: bare-bones binary, no Strict mode, no extras.
 figlet-minimal = ["cli"]
 
-# Preset bundle: toilet-style color + rainbow without Strict mode or terminal
-# auto-detect.
-figlet-toilet-compat = ["cli", "color", "rainbow"]
+# Preset bundle: color + rainbow without Strict mode or terminal auto-detect.
+# Retained per AD-010 as the v0.2.x equivalent: `figlet-color` keeps its
+# original v0.2.0/v0.2.1 semantics for users who want only the color+rainbow
+# aesthetic without the v0.3.0 toilet feature parity surface. Migration
+# guidance in CHANGELOG: v0.2.x users of `figlet-toilet-compat` (deprecated
+# alias) → use `figlet-color` for unchanged behavior.
+figlet-color = ["cli", "color", "rainbow"]
+
+# BREAKING (v0.3.0): `figlet-toilet-compat` semantics flip per E012 spec
+# (`specs/00012-e012-toilet-feature-parity-rusty-figlet/spec.md`).
+#
+#   * v0.2.0: aspirational name for `["cli", "color", "rainbow"]`
+#   * v0.2.1: deprecated alias for `figlet-color` (same set)
+#   * v0.3.0: restored to mean ACTUAL toilet feature parity — composes
+#     the new toilet-parity leaves (`tlf-parser` + 7 filter-* leaves) on
+#     top of the v0.2.x `cli + color + rainbow` baseline. Users who relied
+#     on the v0.2.x semantic should pin `figlet-color` (unchanged).
+#
+# This is the v0.3.0 BREAKING for this specific feature bundle name —
+# but additive at the overall surface level (`figlet-color` retained as
+# the v0.2.x equivalent).
+figlet-toilet-compat = [
+    "cli",
+    "color",
+    "rainbow",
+    "tlf-parser",
+    "filter-crop",
+    "filter-gay",
+    "filter-metal",
+    "filter-flip",
+    "filter-flop",
+    "filter-rotate",
+    "filter-border",
+]
 
 # Leaves -----------------------------------------------------------------------
 
@@ -90,6 +142,49 @@ completions = ["dep:clap_complete"]
 # pure-Rust hand-rolled.
 strict-compat = []
 
+# E012 v0.3.0 leaves — toilet feature parity surface per ADR-0006 (one leaf
+# per self-containable capability, kebab-case + category-prefixed names).
+# All 14 leaves are kept under `full` and composed into `figlet-toilet-compat`
+# (the 7 filter-* leaves + tlf-parser go into `figlet-toilet-compat`); the
+# `output-*`, `color-truecolor`/`color-256`, and `toilet-strict-compat`
+# leaves are opt-in only because their use-cases (HTML/IRC/SVG export,
+# 24-bit/256-color emission, byte-equal toilet 0.3-1 mode) are orthogonal
+# to the toilet-parity preset.
+
+# TLF (`tlf2a`) font-format parser leaf — gates `src/tlf.rs` module.
+tlf-parser = []
+
+# Filter leaves — each gates a `Filter::*` variant's `apply_*` body in
+# `src/filter.rs` via `#[cfg(feature = "filter-<name>")]`.
+#
+# Note: 10 filters but 7 leaves — Rotate180/Left/Right share `filter-rotate`,
+# and `Filter::Nothing` has no leaf (always available).
+filter-crop = []
+filter-gay = ["color"]
+filter-metal = ["color"]
+filter-flip = []
+filter-flop = []
+filter-rotate = []
+filter-border = []
+
+# Color-depth leaves — gate the 24-bit truecolor / 256-color SGR emitters
+# in `src/color_depth.rs`. Both depend on the existing `color` leaf
+# because they emit through the typed `filter::Color` cell color enum.
+color-truecolor = ["color"]
+color-256 = ["color"]
+
+# Export backend leaves — each gates a single `src/export/<format>.rs`
+# backend; all three are pure-Rust with no transitive deps.
+output-html = []
+output-irc = []
+output-svg = []
+
+# Toilet 0.3-1 byte-equal strict-compat mode leaf. Pure-leaf (no
+# transitive deps); gates `src/strict_toilet.rs` exposing `strict_render`
+# + `StrictTarget`. Distinct from `strict-compat` (which targets figlet
+# 2.2.5) per AD-005.
+toilet-strict-compat = []
+
 [dependencies]
 # Always-on: `FigletError` variants use thiserror derives.
 thiserror = "2"
@@ -107,6 +202,33 @@ predicates = "3"
 tempfile = "3"
 static_assertions = "1"
 trybuild = "1"
+# E012 Phase 7 T051 — html_escape microbenchmark. Both `htmlescape` and
+# `v_htmlescape` are MIT licensed (compatible with our MIT OR Apache-2.0
+# downstream redistribution; dev-deps are not shipped to consumers).
+# `criterion` is dual-licensed Apache-2.0 OR MIT.
+criterion = { version = "0.5", default-features = false }
+htmlescape = "0.3"
+v_htmlescape = "0.15"
+# E012 Phase 8 T057 — strict-compat corpus byte-equality tests use
+# `pretty_assertions::assert_eq!` to surface hex-dump diffs on mismatch.
+# Dual-licensed MIT OR Apache-2.0 (verified upstream
+# https://crates.io/crates/pretty_assertions). Dev-only — not shipped to
+# library consumers.
+pretty_assertions = "1"
+# E012 Phase 10 T070 — preset bundle exact-membership assertion test.
+# Dual-licensed MIT OR Apache-2.0. Dev-only.
+toml = { version = "0.8", default-features = false, features = ["parse"] }
+
+[[bench]]
+name = "html_escape"
+harness = false
+required-features = ["output-html"]
+
+# E012 T056 — synthetic seed corpus generator. Run once to materialise the
+# `tests/fixtures/toilet-corpus/` placeholders before CI capture lands.
+[[example]]
+name = "gen_synthetic_corpus"
+required-features = ["filter-crop", "filter-gay", "toilet-strict-compat"]
 
 [[bin]]
 name = "rusty-figlet"

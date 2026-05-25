@@ -48,7 +48,7 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 mod error;
-pub use error::FigletError;
+pub use error::{FigletError, StrictTarget};
 
 // The cross-cutting modules below are foundational scaffolds (Phase 2).
 // Each one's public surface is consumed by US1..US7 in later phases;
@@ -58,11 +58,52 @@ pub use error::FigletError;
 #[allow(dead_code)]
 mod figfont;
 #[allow(dead_code)]
+mod header;
+#[allow(dead_code)]
 mod layout;
+
 #[allow(dead_code)]
 mod mode;
 #[allow(dead_code)]
 mod smush;
+/// TheLetter (`.tlf`) font-format parser (E012 US3 — FR-001).
+///
+/// Gated by the `tlf-parser` Cargo leaf. See [`tlf::parse_tlf`] for the
+/// entry point and [`Figlet::from_tlf`] / [`Figlet::from_tlf_bytes`] for
+/// the high-level `Figlet`-returning API.
+#[cfg(feature = "tlf-parser")]
+#[allow(dead_code)]
+pub mod tlf;
+
+/// `RenderGrid` + `FilterChain` framework (E012 US1/US5 — Phase 4/5).
+///
+/// Public types: [`filter::RenderGrid`], [`filter::Cell`],
+/// [`filter::Color`], [`filter::Filter`], [`filter::FilterChain`].
+/// Individual filter implementations are gated behind their respective
+/// `filter-<name>` leaves (see Cargo.toml). The [`filter::Filter::Nothing`]
+/// identity has no leaf — always available — so an empty chain or an
+/// all-`Nothing` chain compiles on any feature surface.
+pub mod filter;
+
+/// Color depth detection + SGR emission (E012 US4 — Phase 6).
+///
+/// Public types: [`color_depth::ColorDepth`], [`color_depth::resolve_depth`].
+/// The truecolor and 256-color SGR emitters are gated behind the
+/// `color-truecolor` and `color-256` leaves respectively. [`ColorDepth::detect`]
+/// is always available; it reads `COLORTERM` + isatty without any per-render
+/// terminal probe (FR-031 — detection runs once at builder time).
+pub mod color_depth;
+
+pub use color_depth::ColorDepth;
+
+/// Multi-format export backends (E012 US2 — Phase 7).
+///
+/// Public types: [`export::ExportFormat`], [`export::write_export`]. Each
+/// individual backend is gated behind its `output-<format>` leaf:
+/// HTML5 (`output-html`), mIRC `^C` codes (`output-irc`), SVG 1.1
+/// (`output-svg`). The ANSI sub-formats reuse [`ColorDepth`] from
+/// [`color_depth`] for SGR emission.
+pub mod export;
 
 pub use layout::{JustifyFlag, JustifyFlags, LayoutFlag, LayoutFlags};
 
@@ -87,6 +128,17 @@ pub use layout::{JustifyFlag, JustifyFlags, LayoutFlag, LayoutFlags};
 #[cfg(feature = "strict-compat")]
 #[allow(dead_code)]
 pub mod strict;
+
+/// Toilet 0.3-1 strict-compat byte-equal renderer (E012 US6 — FR-019, AD-005).
+///
+/// Distinct from [`strict`] (which targets figlet 2.2.5 byte-equal argv
+/// parsing). Public entry point is [`strict_toilet::strict_render`]; see
+/// the module docs for the byte-format contract, color-downgrade rules
+/// (US6 AS#2), and the corpus-driven validation harness under
+/// `tests/strict_toilet_integration.rs`. Gated by the
+/// `toilet-strict-compat` leaf (v0.3+).
+#[cfg(feature = "toilet-strict-compat")]
+pub mod strict_toilet;
 
 #[cfg(feature = "cli")]
 #[allow(dead_code)]
@@ -293,6 +345,7 @@ pub struct FigletBuilder {
     layout_flags: LayoutFlags,
     justify: Option<Justify>,
     font_dirs: Vec<PathBuf>,
+    color_depth: Option<ColorDepth>,
 }
 
 /// Layout override carried through the builder. Internal — translated
@@ -349,6 +402,7 @@ impl FigletBuilder {
             layout_flags: LayoutFlags::default(),
             justify: None,
             font_dirs: Vec::new(),
+            color_depth: None,
         }
     }
 
@@ -443,6 +497,25 @@ impl FigletBuilder {
         self
     }
 
+    /// Override the color depth used for SGR emission (E012 US4 — FR-010).
+    ///
+    /// When unset (the default), [`build`](Self::build) calls
+    /// [`ColorDepth::detect`] **once** to populate the cached field on
+    /// [`Figlet`]. Subsequent renders never re-probe the terminal per
+    /// FR-031 — the cache is invalidated only via
+    /// [`Figlet::set_color_depth`] or by rebuilding the renderer.
+    ///
+    /// ```rust
+    /// use rusty_figlet::{ColorDepth, FigletBuilder};
+    ///
+    /// let _ = FigletBuilder::new().color_depth(ColorDepth::Truecolor);
+    /// ```
+    #[must_use]
+    pub fn color_depth(mut self, depth: ColorDepth) -> Self {
+        self.color_depth = Some(depth);
+        self
+    }
+
     /// Resolve the font, parse the `.flf`, and build a reusable
     /// [`Figlet`] renderer.
     pub fn build(self) -> Result<Figlet, FigletError> {
@@ -464,12 +537,18 @@ impl FigletBuilder {
             FontSource::Bytes(bytes) => bytes,
         };
         let font = figfont::parse_bytes(&bytes)?;
+        // FR-031: detection runs ONCE here at builder time. The Figlet
+        // renderer caches the result and exposes set_color_depth() as the
+        // sole invalidation entry point — the render path never probes
+        // the terminal.
+        let color_depth = self.color_depth.unwrap_or_else(ColorDepth::detect);
         Ok(Figlet {
             font,
             width: self.width,
             layout_override: self.layout_override,
             layout_flags: self.layout_flags,
             justify: self.justify.unwrap_or(Justify::FontDefault),
+            color_depth,
         })
     }
 
@@ -502,6 +581,7 @@ pub struct Figlet {
     layout_override: Option<LayoutOverride>,
     layout_flags: LayoutFlags,
     justify: Justify,
+    color_depth: ColorDepth,
 }
 
 impl Figlet {
@@ -544,6 +624,110 @@ impl Figlet {
             });
         }
         LayoutResolver::resolve(&self.font, &flags)
+    }
+
+    /// Load a `.tlf` font from disk and return a renderable [`Figlet`].
+    ///
+    /// Bounded per spec Edge Cases: zero-byte files, files larger than
+    /// 8 MiB, and symlink loops are rejected before allocation.
+    ///
+    /// Returns [`FigletError::InvalidTlfHeader`] when the magic prefix
+    /// mismatches, [`FigletError::TlfParse`] for later parse failures.
+    /// Gated by the `tlf-parser` Cargo leaf.
+    #[cfg(feature = "tlf-parser")]
+    pub fn from_tlf(path: impl AsRef<std::path::Path>) -> Result<Figlet, FigletError> {
+        let bytes = tlf::read_tlf_file(path.as_ref())?;
+        Figlet::from_tlf_bytes(&bytes)
+    }
+
+    /// Build a [`Figlet`] from raw `.tlf` bytes (no filesystem access).
+    ///
+    /// Mirrors [`Figlet::from_tlf`] but skips the disk-bounded I/O checks.
+    /// Bytes larger than 8 MiB still trigger [`FigletError::TlfParse`].
+    /// Gated by the `tlf-parser` Cargo leaf.
+    #[cfg(feature = "tlf-parser")]
+    pub fn from_tlf_bytes(bytes: &[u8]) -> Result<Figlet, FigletError> {
+        let tlf_font = tlf::parse_tlf(bytes)?;
+        let font = tlf_to_figfont(tlf_font);
+        Ok(Figlet {
+            font,
+            width: 80,
+            layout_override: None,
+            layout_flags: LayoutFlags::default(),
+            justify: Justify::FontDefault,
+            color_depth: ColorDepth::detect(),
+        })
+    }
+
+    /// Cached color depth in use by this renderer (E012 US4 — AD-003).
+    ///
+    /// Set at builder time via [`FigletBuilder::color_depth`] (or
+    /// auto-detected via [`ColorDepth::detect`] when unset) and cached
+    /// onto the renderer for the lifetime of this instance per FR-031.
+    ///
+    /// The render path NEVER re-probes the terminal — invalidation is
+    /// caller-driven only via [`Figlet::set_color_depth`].
+    #[must_use]
+    pub fn color_depth(&self) -> ColorDepth {
+        self.color_depth
+    }
+
+    /// Invalidate the cached color depth (E012 US4 — AD-003 + FR-031).
+    ///
+    /// Replaces the cached value; subsequent renders observe the new
+    /// depth. Callers who wish to re-detect the terminal capability
+    /// should pass [`ColorDepth::detect`].
+    ///
+    /// This is the **only** documented way to invalidate the cache —
+    /// the render path itself never re-probes per FR-031. Calling this
+    /// method does not allocate.
+    pub fn set_color_depth(&mut self, depth: ColorDepth) {
+        self.color_depth = depth;
+    }
+}
+
+/// Convert a parsed [`tlf::TlfFont`] into the existing [`figfont::FIGfont`]
+/// shape so the same render/smush/layout pipeline can serve both formats.
+///
+/// Inline color attributes carried by TLF cells are dropped at conversion
+/// time — full multicolor rendering lands in Phase 6 (color depth) once the
+/// `RenderGrid` / `Cell` types arrive in Phase 4. The conversion is
+/// allocation-bounded by the source byte length per FR-026 (one output
+/// string per row, no per-cell quadratic copies).
+#[cfg(feature = "tlf-parser")]
+fn tlf_to_figfont(tf: tlf::TlfFont) -> figfont::FIGfont {
+    use std::collections::HashMap as Map;
+    let height = tf.header.height;
+    let hardblank = tf.header.hardblank;
+    let baseline = tf.header.baseline;
+    let max_length = tf.header.max_length;
+
+    let mut glyphs: Map<u32, Vec<String>> = Map::with_capacity(tf.glyphs.len());
+    for (cp, g) in tf.glyphs.into_iter() {
+        let rows: Vec<String> = g
+            .rows
+            .into_iter()
+            .map(|row| {
+                let mut s = String::with_capacity(row.cells.len());
+                for c in row.cells {
+                    s.push(c.ch);
+                }
+                s
+            })
+            .collect();
+        glyphs.insert(cp, rows);
+    }
+
+    figfont::FIGfont {
+        hardblank,
+        height,
+        baseline,
+        max_length,
+        old_layout: 0,
+        full_layout: 0,
+        print_direction: 0,
+        glyphs,
+        codetag_count: 0,
     }
 }
 

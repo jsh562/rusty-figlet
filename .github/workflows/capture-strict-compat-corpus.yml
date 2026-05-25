@@ -1,0 +1,86 @@
+# rusty-figlet `toilet-strict-compat` corpus capture workflow (E012 T052).
+#
+# Manual-trigger-only workflow that installs `toilet 0.3-1` on
+# `ubuntu-latest`, captures byte fixtures for a documented manifest of
+# inputs, commits the results under `tests/fixtures/toilet-corpus/`, and
+# opens a PR titled "chore: refresh strict-compat corpus".
+#
+# This workflow is INTENTIONALLY EXCLUDED from the PR-time `ci.yml`
+# matrix per `docs/strict-compat-corpus-capture.md` §3. It contributes
+# 0 min to the SC-011 25-min HARD-gate budget recorded in
+# `docs/ci-runtime-baseline.md`.
+#
+# Trigger procedure
+# -----------------
+# 1. Navigate to the repo Actions tab on github.com.
+# 2. Select "Capture strict-compat corpus" from the workflow list.
+# 3. Click "Run workflow" → pick `main` (or a feature branch) → Run.
+# 4. The job runs in ~3-5 min, produces a new branch
+#    `corpus-refresh-<YYYY-MM-DD>`, and opens a PR for review.
+# 5. The PR review checklist (per `docs/strict-compat-corpus-capture.md` §5)
+#    covers XSS / IRC / pathological-size / non-determinism checks.
+
+name: Capture strict-compat corpus
+
+on:
+  workflow_dispatch:
+
+# Minimum permissions: contents:write (commit fixtures) + pull-requests:write
+# (open the refresh PR). NO write access to packages, deployments, or any
+# other resource.
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  # Pinned locale matches `ci.yml` for byte-equality determinism.
+  LC_ALL: C.UTF-8
+
+jobs:
+  capture:
+    name: capture-toilet-corpus
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install toilet
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y toilet
+          toilet --version
+          apt-cache policy toilet
+          uname -a
+
+      - name: Capture corpus
+        run: bash scripts/capture-toilet-corpus.sh
+
+      - name: Open PR
+        # `peter-evans/create-pull-request@v6` opens a PR with the captured
+        # fixture diff. Pinned to a major-version tag (the action is widely
+        # used and well-maintained); audit at
+        # https://github.com/peter-evans/create-pull-request.
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore: refresh strict-compat corpus"
+          branch: "corpus-refresh-${{ github.run_id }}"
+          title: "chore: refresh strict-compat corpus"
+          body: |
+            Automated corpus refresh from `workflow_dispatch` run
+            ${{ github.run_id }}.
+
+            **Reviewer checklist** (per
+            `docs/strict-compat-corpus-capture.md` §5):
+
+            - [ ] No fixture under `ascii/`, `utf8-multicolumn/`, or
+                  `edge-width/` contains an unescaped `<script>` /
+                  `javascript:` / IRC color-span escape payload.
+            - [ ] No fixture exceeds 64 KiB (pathological-size guard).
+            - [ ] Two consecutive runs of the same `(input, filter-chain)`
+                  produced byte-identical output (non-determinism guard).
+            - [ ] `manifest.yaml` `review_status` is set to
+                  `reviewed-no-attacker-payload` for every fixture.
+          labels: |
+            chore
+            strict-compat
+            corpus-refresh

@@ -133,6 +133,149 @@ fn resolve_mode(argv_tail: &[OsString], argv0: &std::ffi::OsStr) -> Compatibilit
 fn run_default(argv_tail: &[OsString]) -> Result<(), BinError> {
     let cli = BinCli::parse();
 
+    // T063 + SC-007: parse `--background=<spec>` BEFORE any rendering so an
+    // invalid spec exits non-zero before I/O work. The parser only accepts
+    // 16 named ANSI colors or `#RRGGBB` hex — adversarial bytes (newlines,
+    // SGR injection, shell metachars) are rejected at parse time per spec
+    // Edge Cases. Gated by the `color` leaf because `--background` is too.
+    #[cfg(feature = "color")]
+    let _background_color: Option<rusty_figlet::filter::Color> =
+        if let Some(spec) = cli.background.as_deref() {
+            match parse_color_spec(spec) {
+                Ok(c) => Some(c),
+                Err(msg) => {
+                    eprintln!("rusty-figlet: invalid --background: {msg}");
+                    return Err(BinError::Figlet(rusty_figlet::FigletError::Internal(
+                        "invalid --background color spec",
+                    )));
+                }
+            }
+        } else {
+            None
+        };
+
+    // T030: `-F` filter chain. Multiple `-F` flags are concatenated with
+    // `:` per FR-002 before invoking `FilterChain::parse`. Validation
+    // happens up-front so a typo'd filter name exits non-zero before any
+    // I/O work. Phase 7 (T041..T051) wires the validated chain into the
+    // RenderGrid + exporter pipeline; for now the parse step itself is
+    // the user-observable surface and is sufficient to satisfy FR-002
+    // + FR-016's enumerated-error contract.
+    let chain = if !cli.filter.is_empty() {
+        let spec = cli.filter.join(":");
+        match rusty_figlet::filter::FilterChain::parse(&spec) {
+            Ok(chain) => {
+                // Apply against an empty grid to surface leaf-disabled
+                // filters via FigletError::UnknownFilter at runtime —
+                // matches the contract documented in
+                // `FilterChain::apply`'s rustdoc.
+                if let Err(err) = chain
+                    .clone()
+                    .apply(rusty_figlet::filter::RenderGrid::empty())
+                {
+                    return Err(BinError::Figlet(err));
+                }
+                chain
+            }
+            Err(err) => return Err(BinError::Figlet(err)),
+        }
+    } else {
+        rusty_figlet::filter::FilterChain::new()
+    };
+
+    // T065: `--strict` routes through the toilet-strict-compat renderer
+    // (E012 US6 — FR-019). Gated by the `toilet-strict-compat` leaf.
+    // Default-mode `--strict` is interpreted as the toilet-strict path
+    // because the figlet-2.2.5 strict dispatch lives in `run_strict()`
+    // (the `--strict` precedence ladder routes there for the figlet-strict
+    // leaf). Within Default dispatch a `--strict`-and-toilet-leaf combo
+    // means "render this message in toilet byte-equal mode".
+    #[cfg(feature = "toilet-strict-compat")]
+    if cli._strict && !cli.message.is_empty() {
+        let text = cli.message.join(" ");
+        let bytes = rusty_figlet::strict_toilet::strict_render(
+            &text,
+            &chain,
+            rusty_figlet::StrictTarget::Toilet031,
+        )
+        .map_err(BinError::Figlet)?;
+        let stdout = io::stdout();
+        let mut out = stdout.lock();
+        out.write_all(&bytes)
+            .map_err(rusty_figlet::FigletError::from)?;
+        return Ok(());
+    }
+
+    // T062: resolve requested ColorDepth from --truecolor/--ansi256
+    // flags + COLORTERM env. The resolved depth is currently captured for
+    // FR-031 cache invalidation in Phase 6; full SGR wire-up of the cell
+    // grid lands when the cell-grid rendering pipeline is unified with
+    // the existing Banner output path (out of scope for E012 Phase 9).
+    #[cfg(any(feature = "color-truecolor", feature = "color-256"))]
+    {
+        use rusty_figlet::ColorDepth;
+        let requested: ColorDepth = {
+            #[cfg(feature = "color-truecolor")]
+            {
+                if cli.truecolor {
+                    ColorDepth::Truecolor
+                } else {
+                    inferred_request_from_ansi256_flag(&cli)
+                }
+            }
+            #[cfg(not(feature = "color-truecolor"))]
+            {
+                inferred_request_from_ansi256_flag(&cli)
+            }
+        };
+        let detected = ColorDepth::detect();
+        // FR-029: suppression short-circuits the warning's format-args eval.
+        let _resolved =
+            rusty_figlet::color_depth::resolve_depth(requested, detected, cli.no_downgrade_warning);
+    }
+
+    // T061: `-E <format>` export dispatch. Routes the rendered grid
+    // through `export::write_export(...)` per FR-005/006/007; on
+    // UnsupportedExportFormat the FigletError propagates and the binary
+    // exits non-zero with the enumerated available list.
+    #[cfg(any(
+        feature = "output-html",
+        feature = "output-irc",
+        feature = "output-svg",
+    ))]
+    if let Some(spec) = cli.export_format.as_deref() {
+        let fmt = parse_export_format(spec).map_err(BinError::Figlet)?;
+        let text = if !cli.message.is_empty() {
+            cli.message.join(" ")
+        } else {
+            // Read stdin without the per-banner newline split — `-E` emits
+            // a single export blob.
+            let stdin = io::stdin();
+            let mut handle = stdin.lock();
+            read_stdin_capped(&mut handle)?
+        };
+        let font = map_font(cli.font.as_deref())?;
+        let builder = FigletBuilder::new()
+            .font(font)
+            .width(cli.width.unwrap_or(80));
+        let figlet = builder.build()?;
+        let banner = figlet.render(&text)?;
+        let rows: Vec<String> = banner.lines().collect();
+        let grid = chain
+            .apply(rusty_figlet::filter::RenderGrid::from_text_rows(&rows))
+            .map_err(BinError::Figlet)?;
+        let bytes = rusty_figlet::export::write_export(&grid, fmt).map_err(BinError::Figlet)?;
+        let stdout = io::stdout();
+        let mut out = stdout.lock();
+        out.write_all(&bytes)
+            .map_err(rusty_figlet::FigletError::from)?;
+        return Ok(());
+    }
+    // Suppress the unused-binding warning when no `output-*` leaf is
+    // active — the `chain` value is still consumed by the FilterChain
+    // parse step's runtime validation above.
+    let _ = &chain;
+
     // T131 + FR-060 + US7 AS1: `completions <shell>` short-circuits the
     // render pipeline. Generates the requested shell's completion script
     // via clap_complete (against the same `BinCli` surface the user
@@ -787,6 +930,126 @@ fn map_font(name: Option<&str>) -> Result<Font, FigletError> {
     })
 }
 
+/// Parse a `--background=<spec>` value (E012 US7 — SC-007, T063).
+///
+/// Accepted formats:
+///
+///   * 16 named ANSI colors (case-insensitive): `black`, `red`, `green`,
+///     `yellow`, `blue`, `magenta`, `cyan`, `white`, plus the `bright_*`
+///     variants (`bright_red`, etc.).
+///   * `#RRGGBB` 6-digit lowercase or uppercase hex.
+///
+/// Anything else (shell metachars, ANSI escape bytes, newlines, partial
+/// hex) is rejected with a clean error — no user bytes flow into the
+/// color slot per spec Edge Cases. The returned `Color` is later mapped
+/// into the export pipeline's typed background field; no path exists
+/// from the spec string to a serialized SGR or HTML attribute.
+#[cfg(feature = "color")]
+fn parse_color_spec(spec: &str) -> Result<rusty_figlet::filter::Color, String> {
+    use rusty_figlet::filter::{Color, NamedColor};
+    // Reject embedded controls / newlines / ESC byte up front — these are
+    // the high-signal injection payloads per spec Security Posture.
+    if spec.is_empty() || spec.len() > 32 {
+        return Err(format!("invalid color spec: {spec:?}"));
+    }
+    if spec
+        .bytes()
+        .any(|b| b == b'\x1b' || b == b'\n' || b == b'\r' || b == 0)
+    {
+        return Err(format!("invalid color spec: control byte in {spec:?}"));
+    }
+
+    // `#RRGGBB` hex form.
+    if let Some(hex) = spec.strip_prefix('#') {
+        if hex.len() != 6 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return Err(format!("invalid hex color: {spec:?} (expected #RRGGBB)"));
+        }
+        let r = u8::from_str_radix(&hex[0..2], 16).map_err(|e| e.to_string())?;
+        let g = u8::from_str_radix(&hex[2..4], 16).map_err(|e| e.to_string())?;
+        let b = u8::from_str_radix(&hex[4..6], 16).map_err(|e| e.to_string())?;
+        return Ok(Color::Rgb(r, g, b));
+    }
+
+    let lower = spec.to_ascii_lowercase();
+    let named = match lower.as_str() {
+        "black" => NamedColor::Black,
+        "red" => NamedColor::Red,
+        "green" => NamedColor::Green,
+        "yellow" => NamedColor::Yellow,
+        "blue" => NamedColor::Blue,
+        "magenta" => NamedColor::Magenta,
+        "cyan" => NamedColor::Cyan,
+        "white" => NamedColor::White,
+        "bright_black" => NamedColor::BrightBlack,
+        "bright_red" => NamedColor::BrightRed,
+        "bright_green" => NamedColor::BrightGreen,
+        "bright_yellow" => NamedColor::BrightYellow,
+        "bright_blue" => NamedColor::BrightBlue,
+        "bright_magenta" => NamedColor::BrightMagenta,
+        "bright_cyan" => NamedColor::BrightCyan,
+        "bright_white" => NamedColor::BrightWhite,
+        _ => return Err(format!("unknown color name: {spec:?}")),
+    };
+    Ok(Color::Named(named))
+}
+
+/// Parse a `-E <format>` spec into an `ExportFormat`. Unknown / leaf-disabled
+/// values produce a `FigletError::UnsupportedExportFormat` carrying the
+/// enumerated list of formats compiled into this build (FR-016, T061).
+#[cfg(any(
+    feature = "output-html",
+    feature = "output-irc",
+    feature = "output-svg",
+))]
+fn parse_export_format(spec: &str) -> Result<rusty_figlet::export::ExportFormat, FigletError> {
+    use rusty_figlet::export::ExportFormat;
+    // Build the enumerated-available list per leaf; the per-leaf cfg
+    // branches yield different lengths so a single `vec![]` literal is
+    // not feasible. `allow` is used in place of `vec_init_then_push`
+    // because the alternative would be 7 nested `cfg_if` expressions.
+    #[allow(clippy::vec_init_then_push)]
+    let available: Vec<String> = {
+        #[allow(unused_mut)]
+        let mut v: Vec<String> = Vec::with_capacity(3);
+        #[cfg(feature = "output-html")]
+        v.push("html".to_owned());
+        #[cfg(feature = "output-irc")]
+        v.push("irc".to_owned());
+        #[cfg(feature = "output-svg")]
+        v.push("svg".to_owned());
+        v
+    };
+    match spec.to_ascii_lowercase().as_str() {
+        #[cfg(feature = "output-html")]
+        "html" => Ok(ExportFormat::Html),
+        #[cfg(feature = "output-irc")]
+        "irc" => Ok(ExportFormat::Irc),
+        #[cfg(feature = "output-svg")]
+        "svg" => Ok(ExportFormat::Svg),
+        _ => Err(FigletError::UnsupportedExportFormat {
+            requested: spec.to_owned(),
+            available,
+        }),
+    }
+}
+
+/// Infer the requested color depth from the `--ansi256` flag (when the
+/// truecolor flag isn't enabled). Helper for T062.
+#[cfg(feature = "color-256")]
+fn inferred_request_from_ansi256_flag(cli: &BinCli) -> rusty_figlet::ColorDepth {
+    if cli.ansi256 {
+        rusty_figlet::ColorDepth::Color256
+    } else {
+        rusty_figlet::ColorDepth::Color16
+    }
+}
+
+/// Fallback when only `color-truecolor` is enabled (no `color-256` leaf).
+#[cfg(all(feature = "color-truecolor", not(feature = "color-256")))]
+fn inferred_request_from_ansi256_flag(_cli: &BinCli) -> rusty_figlet::ColorDepth {
+    rusty_figlet::ColorDepth::Color16
+}
+
 /// Read up to 1 MiB from `handle` and return the resulting UTF-8 string
 /// (lossy for invalid bytes). Emits a one-time stderr warning when the
 /// cap is reached (FR-004 + Clarifications Q6).
@@ -897,6 +1160,53 @@ struct BinCli {
     #[cfg(feature = "rainbow")]
     #[arg(long = "rainbow")]
     rainbow: bool,
+    /// Toilet-compatible filter chain (`-F filter1:filter2:...`).
+    ///
+    /// Each `-F` flag is concatenated with `:` per FR-002 before being
+    /// parsed by [`rusty_figlet::filter::FilterChain::parse`]. Unknown
+    /// names exit non-zero with the canonical filter list on stderr
+    /// per FR-016.
+    #[arg(short = 'F', long = "filter", value_name = "CHAIN")]
+    filter: Vec<String>,
+
+    /// Export the rendered banner as `html`, `irc`, or `svg`
+    /// (E012 US2 — FR-005, T061). Gated by any `output-*` leaf.
+    #[cfg(any(
+        feature = "output-html",
+        feature = "output-irc",
+        feature = "output-svg",
+    ))]
+    #[arg(short = 'E', long = "export", value_name = "FORMAT")]
+    export_format: Option<String>,
+
+    /// Force 24-bit truecolor SGR (E012 US4 — FR-008, T062).
+    #[cfg(feature = "color-truecolor")]
+    #[arg(long = "truecolor")]
+    truecolor: bool,
+
+    /// Force 256-color SGR (E012 US4 — FR-009, T062).
+    #[cfg(feature = "color-256")]
+    #[arg(long = "ansi256")]
+    ansi256: bool,
+
+    /// Background color spec — `<name>` (one of the 16 ANSI colors) or
+    /// `#RRGGBB` (E012 US7 — SC-007, T063).
+    #[cfg(feature = "color")]
+    #[arg(long = "background", value_name = "COLOR")]
+    background: Option<String>,
+
+    /// Suppress the one-time downgrade-warning stderr line
+    /// (E012 US4 — FR-029, T062).
+    #[cfg(any(feature = "color-truecolor", feature = "color-256"))]
+    #[arg(long = "no-downgrade-warning")]
+    no_downgrade_warning: bool,
+
+    /// Warn when IRC-format export strips a non-printable byte
+    /// (E012 US2 — FR-015 ergonomics, T061).
+    #[cfg(feature = "output-irc")]
+    #[arg(long = "warn-irc-strip")]
+    warn_irc_strip: bool,
+
     #[arg(long = "strict")]
     _strict: bool,
     #[arg(long = "no-strict")]

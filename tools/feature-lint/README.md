@@ -7,6 +7,10 @@ This tool enforces the Cargo features convention codified in:
 - `specs/adrs/0006-cargo-features-convention-for-portfolio-ports.md`
 - `project-instructions.md` §Cargo Feature Surface (v1.1.0)
 
+## v0.3.0 surface
+
+This vendored copy of `feature-lint` (from E011 Phase 2) is auto-discovering — it parses `Cargo.toml`'s `[features]` block at runtime and applies every sub-check against whatever leaf names it finds. No manual allowlist is required for the 14 new v0.3.0 leaves (`tlf-parser`, `filter-crop`, `filter-gay`, `filter-metal`, `filter-flip`, `filter-flop`, `filter-rotate`, `filter-border`, `color-truecolor`, `color-256`, `output-html`, `output-irc`, `output-svg`, `toilet-strict-compat`). The 19-leaf surface enumeration is reflected in the lint's PASS output by counting every `check-leaf-<leaf>` CI matrix entry it visits.
+
 The lint script is implemented once in the umbrella governance repo
 (`c:\claudecode\rusty\`) per ADR-0003 (Shared Automation Strategy) and AD-008
 of spec 00011. Per-port CI workflows check out the umbrella and invoke this
