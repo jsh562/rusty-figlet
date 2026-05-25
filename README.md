@@ -1,5 +1,9 @@
 # rusty-figlet
 
+<!-- BANNER:v0.2.0 -->
+> **BREAKING (v0.2.0)**: Feature layout reorganized — see CHANGELOG for migration table.
+<!-- /BANNER:v0.2.0 -->
+
 [![crates.io](https://img.shields.io/crates/v/rusty-figlet.svg)](https://crates.io/crates/rusty-figlet)
 [![docs.rs](https://docs.rs/rusty-figlet/badge.svg)](https://docs.rs/rusty-figlet)
 [![CI](https://github.com/jsh562/rusty-figlet/actions/workflows/ci.yml/badge.svg)](https://github.com/jsh562/rusty-figlet/actions/workflows/ci.yml)
@@ -82,22 +86,54 @@ let banner = figlet.render("X").unwrap();
 print!("{banner}");
 ```
 
-For library-only consumers without CLI deps:
-
-```toml
-[dependencies]
-rusty-figlet = { version = "0.1", default-features = false }
-```
-
-This strips `clap`, `clap_complete`, `anstyle`, `termcolor`, and `terminal_size`, leaving only `thiserror` (plus the in-house FIGfont parser, smush engine, layout resolver, and `Banner` iterator).
+For library-only consumers without CLI deps, see the [Cargo Features](#cargo-features) section below.
 
 ## Cargo Features
 
-| Feature | Default | What it gates |
-|---|---|---|
-| `cli` | yes | `clap` + `clap_complete` + `anstyle` + `termcolor` + `terminal_size` |
+`default` enables `full` which composes every leaf; `figlet-classic` reproduces v0.1.x bare-port behavior matching upstream `figlet 2.2.5` 1:1. Library consumers strip the entire CLI surface via `default-features = false`.
 
-`default-features = false` strips every CLI dep so a library consumer's dep tree contains only `rusty-figlet` + `thiserror` + `thiserror`'s pure-Rust transitive deps (verified in `tests/library_api.rs`).
+### Feature matrix
+
+| Feature | Description | Umbrella(s) |
+|---|---|---|
+| `color` | ANSI/SGR color writer (`--color=auto|always|never`). Pulls `anstyle` + `termcolor`. | `full`, `figlet-toilet-compat` |
+| `rainbow` | Per-column HSV rainbow gradient (`--rainbow`, toilet-style). Implies `color`. | `full`, `figlet-toilet-compat` |
+| `terminal-width` | `-t` auto-detect via `terminal_size`. Without this leaf only an explicit `-w` value (or the 80-col fallback) applies. | `full` |
+| `completions` | `completions <shell>` subcommand emitting bash/zsh/fish/powershell scripts. Pulls `clap_complete`. | `full` |
+| `strict-compat` | Hand-rolled upstream-byte-equal getopt parser + `--strict` dispatch path. | `full`, `figlet-classic` |
+
+### Preset bundles
+
+| Bundle | Composition | Use case |
+|---|---|---|
+| `figlet-classic` | `cli` + `strict-compat` | Drop-in upstream `figlet 2.2.5` replacement. No color, no rainbow, no terminal-width auto-detect, no completions subcommand. |
+| `figlet-minimal` | `cli` | Bare-bones binary — no Strict mode, no extras. Smallest functional CLI. |
+| `figlet-toilet-compat` | `cli` + `color` + `rainbow` | Modern figlet with the toilet `--gay` per-column gradient aesthetic; no Strict mode or `-t` auto-detect. |
+
+### Keep-list workaround (Cargo features are union-only)
+
+Cargo features cannot subtract from `default`. To get "everything except a specific leaf," disable defaults and enumerate the features you want:
+
+```sh
+cargo install rusty-figlet --no-default-features --features "cli color rainbow"
+# → CLI + color + rainbow, but NO terminal-width auto-detect, NO completions,
+#   NO strict-compat path.
+```
+
+For the common cases the named [preset bundles](#preset-bundles) above are usually sufficient.
+
+### Library-only consumers
+
+```toml
+[dependencies]
+rusty-figlet = { version = "0.2", default-features = false }
+```
+
+This strips `clap`, `clap_complete`, `anstyle`, `termcolor`, and `terminal_size`, leaving only `thiserror` and the in-house FIGfont parser. Verified by `tests/library_api.rs` and the CI `test-no-default` job's `cargo tree --no-default-features` audit (per SC-001 of spec 00011).
+
+### Convention authority
+
+This layout follows the **portfolio-wide Cargo Features Convention** codified in [ADR-0006](https://github.com/jsh562/rustylib/blob/main/specs/adrs/0006-cargo-features-convention-for-portfolio-ports.md) (the "why" — option analysis + rationale) and [`project-instructions.md` §Cargo Feature Surface](https://github.com/jsh562/rustylib/blob/main/project-instructions.md) (the "what" — canonical rules per per-port crate). Every Rusty port from v0.2 onward exposes the same umbrella set (`default`/`full`/`cli`/`<port>-classic`), per-port leaves named in kebab-case, and 2–4 preset bundles.
 
 ## Compatibility
 

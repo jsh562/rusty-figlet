@@ -11,10 +11,14 @@ use std::ffi::OsString;
 use std::io::{self, BufRead, Read, Write};
 use std::process::ExitCode;
 
-use clap::{CommandFactory, Parser};
+#[cfg(feature = "completions")]
+use clap::CommandFactory;
+use clap::Parser;
+#[cfg(feature = "strict-compat")]
+use rusty_figlet::clamp_input_latin1;
 use rusty_figlet::{
     Banner, CompatibilityMode, Figlet, FigletBuilder, FigletError, Font, JustifyFlag, JustifyFlags,
-    LayoutFlag, LayoutFlags, clamp_input_latin1,
+    LayoutFlag, LayoutFlags,
 };
 
 /// Maximum number of bytes consumed from stdin (1 MiB).
@@ -35,7 +39,18 @@ fn main() -> ExitCode {
     let mode = resolve_mode(&argv_tail, &argv0);
 
     let result = match mode {
+        #[cfg(feature = "strict-compat")]
         CompatibilityMode::Strict => run_strict(&argv_tail),
+        #[cfg(not(feature = "strict-compat"))]
+        CompatibilityMode::Strict => {
+            // Strict mode requested but `strict-compat` leaf is disabled —
+            // fall back to Default mode (the binary was built without the
+            // upstream-byte-equal parser).
+            eprintln!(
+                "rusty-figlet: built without strict-compat leaf — falling back to default mode"
+            );
+            run_default(&argv_tail)
+        }
         CompatibilityMode::Default => run_default(&argv_tail),
         _ => run_default(&argv_tail),
     };
@@ -61,8 +76,11 @@ fn main() -> ExitCode {
 /// Binary-layer error union. Strict-mode parse errors carry their
 /// pre-formatted upstream-style diagnostic so `main()` can write it
 /// byte-equally to stderr; library errors take the standard
-/// `rusty-figlet: <err>` shape.
+/// `rusty-figlet: <err>` shape. The `Strict` variant is dead when the
+/// `strict-compat` leaf is disabled — the dispatch arm + the
+/// `run_strict()` constructor are both `#[cfg(feature = "strict-compat")]`-gated.
 enum BinError {
+    #[allow(dead_code)]
     Strict(String),
     Figlet(FigletError),
 }
@@ -120,6 +138,8 @@ fn run_default(argv_tail: &[OsString]) -> Result<(), BinError> {
     // via clap_complete (against the same `BinCli` surface the user
     // interacts with) and exits 0. Default mode only — Strict mode
     // rejects the subcommand in `run_strict` per FR-063 + US7 AS3.
+    // Gated by the `completions` leaf (v0.2+).
+    #[cfg(feature = "completions")]
     if let Some(BinSubcommand::Completions { shell }) = cli.subcommand {
         let mut cmd = BinCli::command();
         let name = cmd.get_name().to_string();
@@ -130,20 +150,30 @@ fn run_default(argv_tail: &[OsString]) -> Result<(), BinError> {
     // T120 + T123: resolve color choice from --color, NO_COLOR env, and
     // stdout TTY status per FR-030 + FR-032 + AD-011. NO_COLOR (any
     // non-empty value) wins over --color=always per FR-032.
+    // Gated by the `color` leaf (v0.2+).
+    #[cfg(feature = "color")]
     let no_color_env = std::env::var_os("NO_COLOR")
         .map(|v| !v.is_empty())
         .unwrap_or(false);
+    #[cfg(feature = "color")]
     let color_choice = match cli.color {
         BinColorChoice::Auto => rusty_figlet::color::ColorChoice::Auto,
         BinColorChoice::Always => rusty_figlet::color::ColorChoice::Always,
         BinColorChoice::Never => rusty_figlet::color::ColorChoice::Never,
     };
+    #[cfg(feature = "color")]
     let stdout_is_tty = is_stdout_tty();
+    #[cfg(feature = "color")]
     let use_color = rusty_figlet::color::should_color(color_choice, no_color_env, stdout_is_tty);
     // T121 + T123: rainbow is only active when color is also active. We
     // build the palette lazily after rendering when we know the actual
-    // banner width per HINT-006.
+    // banner width per HINT-006. Gated by `rainbow` leaf.
+    #[cfg(all(feature = "color", feature = "rainbow"))]
     let rainbow_active = use_color && cli.rainbow;
+    // When `color` is enabled but `rainbow` is not, the rainbow palette
+    // path is unreachable.
+    #[cfg(all(feature = "color", not(feature = "rainbow")))]
+    let rainbow_active: bool = false;
 
     // FR-046 + Clarifications Q7: `-C`/`-N` are accepted-but-ignored in
     // Default mode; emit a one-time stderr warning per process per
@@ -167,18 +197,25 @@ fn run_default(argv_tail: &[OsString]) -> Result<(), BinError> {
 
     // T106 + AD-010: width precedence ladder.
     // `-w N` from cli > `-t` (auto-applied in Default mode when stdout
-    // is a tty) > 80.
-    let columns_env = std::env::var("COLUMNS")
-        .ok()
-        .and_then(|s| s.parse::<u32>().ok());
-    let is_tty = is_stdout_tty();
-    let width = rusty_figlet::resolve_width_for(
-        cli.width,
-        cli._use_terminal_width,
-        columns_env,
-        is_tty,
-        CompatibilityMode::Default,
-    );
+    // is a tty) > 80. The `-t` auto-apply branch is gated by the
+    // `terminal-width` leaf (v0.2+); without it, only an explicit `-w`
+    // value or the 80-column fallback applies.
+    #[cfg(feature = "terminal-width")]
+    let width = {
+        let columns_env = std::env::var("COLUMNS")
+            .ok()
+            .and_then(|s| s.parse::<u32>().ok());
+        let is_tty = is_stdout_tty_default();
+        rusty_figlet::resolve_width_for(
+            cli.width,
+            cli._use_terminal_width,
+            columns_env,
+            is_tty,
+            CompatibilityMode::Default,
+        )
+    };
+    #[cfg(not(feature = "terminal-width"))]
+    let width = cli.width.unwrap_or(80);
     builder = builder.width(width);
 
     // T109: wire layout flags (FR-023).
@@ -194,6 +231,8 @@ fn run_default(argv_tail: &[OsString]) -> Result<(), BinError> {
     // `output::write_banner`. When color is suppressed, the plain
     // `io::stdout().lock()` path is used and bytes are byte-identical to
     // the non-color path (per SC-013 `--color=never` byte-identity).
+    // Gated by the `color` leaf (v0.2+).
+    #[cfg(feature = "color")]
     if use_color {
         // Force `termcolor::ColorChoice::Always` because we already
         // resolved TTY + NO_COLOR ourselves via `should_color`; letting
@@ -262,16 +301,26 @@ fn run_default(argv_tail: &[OsString]) -> Result<(), BinError> {
 /// When `rainbow_active` is false the banner is written verbatim with
 /// no SGR decoration so the output remains identical to the non-color
 /// path under `--color=auto` non-TTY (rainbow off) scenarios.
+/// Gated by the `color` leaf (v0.2+).
+#[cfg(feature = "color")]
 fn write_banner_with_color<W: termcolor::WriteColor>(
     banner: &Banner,
     rainbow_active: bool,
     out: &mut W,
 ) -> Result<(), BinError> {
     let cfg = if rainbow_active {
-        let max_width = banner.lines().map(|l| l.chars().count()).max().unwrap_or(0) as u32;
-        Some(rusty_figlet::output::ColorConfig {
-            rainbow_palette: Some(rusty_figlet::color::rainbow_palette(max_width)),
-        })
+        #[cfg(feature = "rainbow")]
+        {
+            let max_width = banner.lines().map(|l| l.chars().count()).max().unwrap_or(0) as u32;
+            Some(rusty_figlet::output::ColorConfig {
+                rainbow_palette: Some(rusty_figlet::color::rainbow_palette(max_width)),
+            })
+        }
+        #[cfg(not(feature = "rainbow"))]
+        {
+            let _ = banner;
+            None
+        }
     } else {
         None
     };
@@ -279,7 +328,8 @@ fn write_banner_with_color<W: termcolor::WriteColor>(
     Ok(())
 }
 
-/// T123 color variant of [`render_normal_mode`].
+/// T123 color variant of [`render_normal_mode`]. Gated by the `color` leaf.
+#[cfg(feature = "color")]
 fn render_normal_color<W: termcolor::WriteColor>(
     figlet: &Figlet,
     text: &str,
@@ -301,7 +351,8 @@ fn render_normal_color<W: termcolor::WriteColor>(
     Ok(())
 }
 
-/// T123 color variant of [`render_paragraph_mode`].
+/// T123 color variant of [`render_paragraph_mode`]. Gated by the `color` leaf.
+#[cfg(feature = "color")]
 fn render_paragraph_color<W: termcolor::WriteColor>(
     figlet: &Figlet,
     text: &str,
@@ -390,12 +441,23 @@ fn render_paragraph_mode<W: Write>(
     Ok(())
 }
 
-/// Stdout-tty detection. The `terminal_size` dep is CLI-gated, so the
-/// helper compiles under the `cli` feature only (this whole binary
-/// already requires it). Returns false when stdout is piped.
+/// Stdout-tty detection via `std::io::IsTerminal`. No extra dep —
+/// always available under the `cli` umbrella. Returns false when stdout
+/// is piped. Used by the `color` (NO_COLOR + --color=auto) and
+/// `terminal-width` (-t auto-detect) leaves; when both are disabled the
+/// function is dead, so gate it on whichever leaf is enabled.
+#[cfg(any(feature = "color", feature = "terminal-width"))]
 fn is_stdout_tty() -> bool {
     use std::io::IsTerminal;
     io::stdout().is_terminal()
+}
+
+/// Alias used by the `terminal-width` leaf's `-t` auto-detect branch.
+/// Kept as a separate symbol so the leaf-disabled build's dead-code
+/// linter doesn't flag the helper.
+#[cfg(feature = "terminal-width")]
+fn is_stdout_tty_default() -> bool {
+    is_stdout_tty()
 }
 
 /// Per-argv-occurrence layout / justify / paragraph flag collector
@@ -538,6 +600,8 @@ fn write_banner_lines<W: Write>(banner: &Banner, out: &mut W) -> Result<(), Figl
 /// upstream `figlet(6)`, Latin-1-clamps the rendered input per FR-044,
 /// and routes everything to stdout with the same line-per-banner contract
 /// as Default mode (sans color/rainbow per FR-045).
+/// Gated by the `strict-compat` leaf (v0.2+).
+#[cfg(feature = "strict-compat")]
 fn run_strict(argv_tail: &[OsString]) -> Result<(), BinError> {
     use rusty_figlet::strict;
 
@@ -572,17 +636,24 @@ fn run_strict(argv_tail: &[OsString]) -> Result<(), BinError> {
 
     // T109 (Strict path): width precedence per AD-010 + HINT-005.
     // Strict mode does NOT auto-apply `-t` even when stdout is a tty.
-    let columns_env = std::env::var("COLUMNS")
-        .ok()
-        .and_then(|s| s.parse::<u32>().ok());
-    let is_tty = is_stdout_tty();
-    let width = rusty_figlet::resolve_width_for(
-        args.width,
-        args.use_terminal_width,
-        columns_env,
-        is_tty,
-        CompatibilityMode::Strict,
-    );
+    // The `terminal-width` leaf gates the auto-detect branch; without it,
+    // only the explicit `-w` value (or 80 fallback) applies.
+    #[cfg(feature = "terminal-width")]
+    let width = {
+        let columns_env = std::env::var("COLUMNS")
+            .ok()
+            .and_then(|s| s.parse::<u32>().ok());
+        let is_tty = is_stdout_tty();
+        rusty_figlet::resolve_width_for(
+            args.width,
+            args.use_terminal_width,
+            columns_env,
+            is_tty,
+            CompatibilityMode::Strict,
+        )
+    };
+    #[cfg(not(feature = "terminal-width"))]
+    let width = args.width.unwrap_or(80);
     builder = builder.width(width);
 
     // T109 (Strict path): wire layout + justify from the hand-rolled
@@ -684,6 +755,9 @@ fn run_strict(argv_tail: &[OsString]) -> Result<(), BinError> {
 /// banner rows to `out`. The clamp produces a `Vec<u8>` whose bytes map
 /// to Unicode codepoints 0..=255 (Latin-1 round-trips through Unicode),
 /// which the figfont codepoint lookup indexes verbatim.
+/// Gated by the `strict-compat` leaf because `clamp_input_latin1` is only
+/// useful in the Strict-mode dispatch path.
+#[cfg(feature = "strict-compat")]
 fn render_latin1<W: Write>(figlet: &Figlet, text: &str, out: &mut W) -> Result<(), FigletError> {
     let clamped = clamp_input_latin1(text);
     let s: String = clamped.into_iter().map(char::from).collect();
@@ -756,6 +830,8 @@ fn warn_control_file_ignored() {
 
 /// Tri-state `--color` value local to the binary; mapped to
 /// `rusty_figlet::color::ColorChoice` for `should_color` resolution.
+/// Gated by the `color` leaf (v0.2+).
+#[cfg(feature = "color")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, clap::ValueEnum)]
 #[value(rename_all = "lower")]
 enum BinColorChoice {
@@ -815,8 +891,10 @@ struct BinCli {
     _control_file: Option<std::path::PathBuf>,
     #[arg(short = 'N', long = "no-controlfile")]
     _no_controlfile: bool,
+    #[cfg(feature = "color")]
     #[arg(long = "color", value_name = "WHEN", value_enum, default_value_t = BinColorChoice::Auto)]
     color: BinColorChoice,
+    #[cfg(feature = "rainbow")]
     #[arg(long = "rainbow")]
     rainbow: bool,
     #[arg(long = "strict")]
@@ -831,6 +909,8 @@ struct BinCli {
     /// `bash`/`zsh`/`fish`/`powershell` and exits 0. Default mode only;
     /// Strict mode rejects it with the upstream "unrecognized option"
     /// diagnostic per FR-063 (wired in `run_strict`).
+    /// Gated by the `completions` leaf (v0.2+).
+    #[cfg(feature = "completions")]
     #[command(subcommand)]
     subcommand: Option<BinSubcommand>,
 }
@@ -838,6 +918,8 @@ struct BinCli {
 /// Top-level subcommands emitted by the rusty-figlet binary. Currently
 /// limited to `completions <shell>` (FR-060). Strict mode rejects every
 /// subcommand because upstream `figlet 2.2.5` does not have them.
+/// Gated by the `completions` leaf (v0.2+).
+#[cfg(feature = "completions")]
 #[derive(Debug, clap::Subcommand)]
 enum BinSubcommand {
     /// Emit a shell-completion script for the named shell to stdout

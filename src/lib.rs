@@ -26,11 +26,15 @@
 //!
 //! ## Default features
 //!
-//! `default = ["cli"]` enables the CLI binary surface (clap, clap_complete,
-//! anstyle, termcolor, terminal_size). Library consumers should depend on
-//! `rusty-figlet` with `default-features = false` to strip every CLI-only
-//! dep so only `thiserror` and the in-house FIGfont parser are pulled in
-//! (per FR-051 + AD-001).
+//! `default = ["full"]` enables every leaf (the kitchen-sink experience)
+//! plus the CLI binary surface (clap, clap_complete, anstyle, termcolor,
+//! terminal_size). Library consumers should depend on `rusty-figlet` with
+//! `default-features = false` to strip every CLI-only dep so only
+//! `thiserror` and the in-house FIGfont parser are pulled in.
+//!
+//! See the README "Cargo Features" section + ADR-0006 for the full leaf
+//! inventory, preset bundles (`figlet-classic`, `figlet-minimal`,
+//! `figlet-toilet-compat`), and the keep-list workaround.
 //!
 //! ## Error handling
 //!
@@ -61,44 +65,61 @@ mod mode;
 mod smush;
 
 pub use layout::{JustifyFlag, JustifyFlags, LayoutFlag, LayoutFlags};
+
+// -----------------------------------------------------------------------------
+// Feature-gate map (per FR-008 + HINT-004 — module-level gates clustered here).
+// -----------------------------------------------------------------------------
+//   #[cfg(feature = "cli")]              → cli module (clap-derive scaffold)
+//   #[cfg(feature = "color")]            → color + output modules (anstyle + termcolor)
+//   #[cfg(feature = "terminal-width")]   → width module + resolve_width_for re-export
+//   #[cfg(feature = "strict-compat")]    → strict module (hand-rolled upstream parser)
+//
+// `rainbow` is a pure compile-flag leaf (no module of its own — it gates a
+// runtime branch inside src/main.rs). The `completions` leaf likewise gates
+// only the BinSubcommand::Completions dispatch arm in src/main.rs.
+// -----------------------------------------------------------------------------
+
 /// Hand-rolled Strict-mode argv parser (AD-007). Public so the
 /// `rusty-figlet` binary can dispatch to its byte-equal upstream
 /// diagnostics; the SemVer policy on this module's surface matches the
-/// rest of the public library API per FR-050.
+/// rest of the public library API per FR-050. Gated by the
+/// `strict-compat` leaf (v0.2+).
+#[cfg(feature = "strict-compat")]
 #[allow(dead_code)]
 pub mod strict;
 
 #[cfg(feature = "cli")]
 #[allow(dead_code)]
 mod cli;
-/// CLI-gated color/rainbow helpers (per AD-011 + AD-012 + HINT-006).
+/// Color/rainbow helpers (per AD-011 + AD-012 + HINT-006).
 ///
 /// Exposed publicly for the `rusty-figlet` binary to consume; library
 /// callers SHOULD NOT depend on this module directly (it lives under the
-/// `cli` feature and is subject to change without a major version bump
-/// per FR-051 + AD-001).
-#[cfg(feature = "cli")]
+/// `color` leaf and is subject to change without a major version bump).
+#[cfg(feature = "color")]
 #[doc(hidden)]
 #[allow(dead_code)]
 pub mod color;
-/// CLI-gated banner writer (per AD-011).
+/// Banner writer (per AD-011).
 ///
 /// Exposed publicly for the `rusty-figlet` binary to consume; library
-/// callers SHOULD NOT depend on this module directly.
-#[cfg(feature = "cli")]
+/// callers SHOULD NOT depend on this module directly. Gated by the
+/// `color` leaf because the writer signature is parameterised over
+/// `termcolor::WriteColor`.
+#[cfg(feature = "color")]
 #[doc(hidden)]
 #[allow(dead_code)]
 pub mod output;
-#[cfg(feature = "cli")]
+#[cfg(feature = "terminal-width")]
 #[allow(dead_code)]
 mod width;
 
 /// Re-export of [`width::resolve_width`] for the rusty-figlet binary's
-/// CLI wiring path (T106 + T109). Library consumers that need to
-/// resolve a width budget under the same precedence ladder may call
-/// this helper directly. CLI-gated because the underlying lookup
-/// depends on `terminal_size`.
-#[cfg(feature = "cli")]
+/// CLI wiring path. Library consumers that need to resolve a width
+/// budget under the same precedence ladder may call this helper
+/// directly. Gated by the `terminal-width` leaf because the underlying
+/// lookup depends on `terminal_size`.
+#[cfg(feature = "terminal-width")]
 pub fn resolve_width_for(
     explicit_w: Option<u32>,
     use_t: bool,

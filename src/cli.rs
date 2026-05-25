@@ -6,7 +6,11 @@
 
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand as ClapSubcommand, ValueEnum};
+use clap::Parser;
+#[cfg(feature = "completions")]
+use clap::Subcommand as ClapSubcommand;
+#[cfg(feature = "color")]
+use clap::ValueEnum;
 
 /// Top-level CLI surface for `rusty-figlet`.
 #[derive(Debug, Parser)]
@@ -86,11 +90,13 @@ pub struct Cli {
     #[arg(short = 'N', long = "no-controlfile")]
     pub no_controlfile: bool,
 
-    /// Tri-state color flag.
+    /// Tri-state color flag. Gated by `color` leaf (v0.2+).
+    #[cfg(feature = "color")]
     #[arg(long = "color", value_name = "WHEN", value_enum, default_value_t = ColorChoice::Auto)]
     pub color: ColorChoice,
 
-    /// Emit a per-column rainbow gradient.
+    /// Emit a per-column rainbow gradient. Gated by `rainbow` leaf (v0.2+).
+    #[cfg(feature = "rainbow")]
     #[arg(long = "rainbow")]
     pub rainbow: bool,
 
@@ -105,12 +111,14 @@ pub struct Cli {
     #[arg(value_name = "MESSAGE", trailing_var_arg = true)]
     pub message: Vec<String>,
 
-    /// Subcommand (e.g. `completions <shell>`).
+    /// Subcommand (e.g. `completions <shell>`). Gated by `completions` leaf.
+    #[cfg(feature = "completions")]
     #[command(subcommand)]
     pub subcommand: Option<Subcommand>,
 }
 
-/// Tri-state `--color` value.
+/// Tri-state `--color` value. Gated by `color` leaf (v0.2+).
+#[cfg(feature = "color")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, ValueEnum)]
 #[value(rename_all = "lower")]
 pub enum ColorChoice {
@@ -122,7 +130,8 @@ pub enum ColorChoice {
     Never,
 }
 
-/// Subcommand surface.
+/// Subcommand surface. Gated by `completions` leaf (v0.2+).
+#[cfg(feature = "completions")]
 #[derive(Debug, ClapSubcommand)]
 pub enum Subcommand {
     /// Emit shell-completion scripts.

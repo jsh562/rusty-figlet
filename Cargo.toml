@@ -1,11 +1,11 @@
 [package]
 name = "rusty-figlet"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.85"
 authors = ["James Han <jsh562@users.noreply.github.com>"]
 license = "MIT OR Apache-2.0"
-description = "Render ASCII-art banners from text — a Rust port of cmatsuoka's `figlet(6)` v2.2.5 with an in-house FIGfont 2.0 parser, all six horizontal smush rules + universal, 12 bundled `.flf` fonts via `include_bytes!`, terminal-width-aware layout, color/rainbow output, byte-equal Strict-mode upstream compatibility, and a typed library API."
+description = "Render ASCII-art banners from text — a Rust port of cmatsuoka's `figlet(6)` v2.2.5 with an in-house FIGfont 2.0 parser, all six horizontal smush rules + universal, 12 bundled `.flf` fonts via `include_bytes!`, terminal-width-aware layout, color/rainbow output, byte-equal Strict-mode upstream compatibility, and a typed library API. v0.2: feature layout reorganized — see CHANGELOG."
 repository = "https://github.com/jsh562/rusty-figlet"
 homepage = "https://github.com/jsh562/rusty-figlet"
 documentation = "https://docs.rs/rusty-figlet"
@@ -14,27 +14,87 @@ keywords = ["figlet", "ascii-art", "banner", "cli", "toilet"]
 categories = ["command-line-utilities", "text-processing"]
 default-run = "rusty-figlet"
 
+# -----------------------------------------------------------------------------
+# [features] — v0.2.0 portfolio-wide Cargo Features Convention layout.
+#
+# Convention authority:
+#   * specs/adrs/0006-cargo-features-convention-for-portfolio-ports.md (why)
+#   * project-instructions.md §Cargo Feature Surface (what)
+#
+# Required umbrellas (FR-001..FR-004):
+#   default          — alias for `full`; kitchen-sink for casual `cargo install`
+#   full             — every leaf
+#   cli              — CLI-only deps + modules (library consumers strip)
+#   figlet-classic   — bare port, drop-in match for upstream figlet 2.2.5
+#
+# Optional preset bundles (FR-007 — 2-4 per port):
+#   figlet-minimal       — cli only
+#   figlet-toilet-compat — cli + color + rainbow (toilet aesthetic)
+#
+# Leaves (FR-006), see docs/feature-layout.md §v0.2.0 Carved Leaves:
+#   color           — anstyle + termcolor (SGR color writer)
+#   rainbow         — per-column HSV gradient (depends on color)
+#   terminal-width  — terminal_size (`-t` auto-detect)
+#   completions     — clap_complete (`completions <shell>` subcommand)
+#   strict-compat   — hand-rolled upstream-byte-equal getopt parser
+#
+# Each leaf is gated via #[cfg(feature = "<leaf>")] in src/ (FR-008 + HINT-004).
+# -----------------------------------------------------------------------------
+
 [features]
-default = ["cli"]
-# `cli` gates the CLI-only dependencies so library consumers can depend on
-# rusty-figlet with `default-features = false` without pulling in clap /
-# clap_complete / anstyle / termcolor / terminal_size. Two-config matrix:
-#   * default = ["cli"]       → full CLI binary + library API
-#   * default-features = false → library only (thiserror + pure-Rust internals)
-# Per FR-051 + AD-001. NO companion-binary feature at v0.1.0 (single bin per
-# Constitution III + AD-001).
-cli = [
-    "dep:clap",
-    "dep:clap_complete",
-    "dep:anstyle",
-    "dep:termcolor",
-    "dep:terminal_size",
+default = ["full"]
+
+# Umbrella: every leaf enabled. Kitchen sink for `cargo install` casual users.
+full = [
+    "cli",
+    "color",
+    "rainbow",
+    "terminal-width",
+    "completions",
+    "strict-compat",
 ]
+
+# Umbrella: all CLI-only deps + modules. Library consumers strip this via
+# `default-features = false`.
+cli = ["dep:clap"]
+
+# Umbrella: bare port, drop-in match for upstream figlet 2.2.5. Pulls
+# Strict-mode + the CLI surface; intentionally excludes color, rainbow,
+# terminal-width auto-detect, and completions subcommand because none of
+# those exist in upstream figlet(6).
+figlet-classic = ["cli", "strict-compat"]
+
+# Preset bundle: bare-bones binary, no Strict mode, no extras.
+figlet-minimal = ["cli"]
+
+# Preset bundle: toilet-style color + rainbow without Strict mode or terminal
+# auto-detect.
+figlet-toilet-compat = ["cli", "color", "rainbow"]
+
+# Leaves -----------------------------------------------------------------------
+
+# Color output: ANSI/SGR color writer + ColorChoice resolver.
+color = ["dep:anstyle", "dep:termcolor"]
+
+# Rainbow output: per-column HSV gradient. Requires `color` (cannot rainbow
+# without the underlying color writer).
+rainbow = ["color"]
+
+# Terminal-width auto-detect (`-t` flag). Sole dep is terminal_size.
+terminal-width = ["dep:terminal_size"]
+
+# Shell-completion script generator (`completions <shell>` subcommand).
+completions = ["dep:clap_complete"]
+
+# Strict-mode upstream-byte-equal getopt-style parser. No external deps —
+# pure-Rust hand-rolled.
+strict-compat = []
 
 [dependencies]
 # Always-on: `FigletError` variants use thiserror derives.
 thiserror = "2"
-# CLI-only deps gated behind the `cli` feature.
+# CLI-only deps gated behind leaves/umbrellas per project-instructions
+# §Cargo Feature Surface (HINT-005).
 clap = { version = "4", features = ["derive"], optional = true }
 clap_complete = { version = "4", optional = true }
 anstyle = { version = "1", optional = true }
