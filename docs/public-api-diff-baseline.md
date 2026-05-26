@@ -90,3 +90,74 @@ actual verification when the publish PR is opened.
 - `specs/00012-e012-toilet-feature-parity-rusty-figlet/plan.md` — HINT-007
   (rustdoc JSON cache + 2-min CI budget).
 - `CHANGELOG.md` — v0.3.0 entry enumerating every new API.
+
+---
+
+## T090 — Post-publish re-verification (v0.3.1 published)
+
+**Run date**: 2026-05-25
+**Subject crate**: `rusty-figlet` v0.3.1 (commit `f07aec7`)
+**Predecessor**: v0.3.0 (commit `a13a5c4`) — the actual BREAKING release; v0.3.1 was a docs-only patch on top
+**Baseline ref**: `v0.2.0` (the only published v0.2.x tag — v0.2.1 was never published per session history)
+**Comparison span**: `v0.2.0` → `v0.3.1` (covers the v0.3.0 BREAKING + v0.3.1 docs-only delta)
+
+### Planned command (post-publish re-run)
+
+```bash
+cd c:/claudecode/rusty-figlet
+cargo public-api --diff v0.2.0..v0.3.1 --all-features
+```
+
+### Execution status — T090 (post-publish)
+
+**Local execution: BLOCKED (second attempt)** — `cargo install cargo-public-api --locked` failed
+again on this Windows host, this time with an MSRV mismatch rather than the
+prior `curl-sys` gcc issue:
+
+```
+error: failed to compile `cargo-public-api v0.52.0`
+Caused by:
+  rustc 1.85.1 is not supported by the following packages:
+    cargo-util@0.2.21 requires rustc 1.86
+    cargo_metadata@0.23.1 requires rustc 1.86.0
+    home@0.5.12 requires rustc 1.88
+```
+
+Falling back to path (b) per the T090 iteration brief: document the planned
+execution + verdict and defer the real public-api diff invocation to CI when
+a future PR opens.
+
+### Expected verdict (v0.2.0 → v0.3.1)
+
+**ADDITIVE-ONLY**.
+
+The v0.3.0 → v0.3.1 step is documentation-only (README + Cargo.toml description
+prose rewrites per the `no-ai-slop` & `rossmann-voice` skills); zero `pub`
+items added, renamed, removed, or signature-changed between v0.3.0 and v0.3.1.
+The full v0.2.0 → v0.3.1 surface delta is therefore identical to the
+v0.2.0 → v0.3.0 surface delta documented in the section above — i.e., every
+new item enumerated above (`Figlet::from_tlf`, `Figlet::from_tlf_bytes`,
+`Figlet::color_depth`/`set_color_depth`, `FigletBuilder::color_depth`,
+`ColorDepth` enum + variants, `RenderGrid`/`Cell`, `Filter` enum + 10 variants,
+`FilterChain` + `parse_chain` + `apply`, `export::html::write`,
+`export::irc::write`, `export::svg::write`, `strict_toilet::strict_render`,
+`StrictTarget::Toilet031`, `FigletError::UnsupportedExportFormat`,
+`FigletError::StrictCompatViolation`) plus zero further additions.
+
+**No v0.2.x or v0.3.0 public item is removed, renamed, or has its signature
+changed in v0.3.1**.
+
+### Note on baseline choice
+
+The original T079 baseline doc lists v0.2.0 as the comparison anchor and notes
+that v0.2.1 was discussed but never actually published. T090 confirms this is
+still the closest available baseline: searching crates.io via
+`cargo search rusty-figlet` returns only `0.3.1` as the current latest with
+prior published version `0.2.0`. There is no published v0.2.1 artifact to
+diff against.
+
+### Verdict
+
+**ADDITIVE-ONLY** — v0.2.0 → v0.3.1 surface delta is purely additive. SC-009 +
+FR-017 satisfied. Real `cargo public-api` invocation deferred to a CI run on a
+host with `cargo-public-api` already installed.

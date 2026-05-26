@@ -1,6 +1,6 @@
 [package]
 name = "rusty-figlet"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2024"
 rust-version = "1.85"
 authors = ["James Han <jsh562@users.noreply.github.com>"]
@@ -122,6 +122,19 @@ figlet-toilet-compat = [
     "filter-rotate",
     "filter-border",
 ]
+
+# v0.1.0 compatibility shim (v0.3.2+). v0.2.0 narrowed the `cli` umbrella
+# from "kitchen-sink CLI" (pulled clap + clap_complete + anstyle + termcolor
+# + terminal_size) to just `["dep:clap"]`, with color/completions/terminal-
+# width carved out as separate leaves. Users who had
+# `default-features = false, features = ["cli"]` in v0.1.0 got a narrower
+# build in v0.2.0+. This alias restores the v0.1.0 `cli` composition for
+# easy migration:
+#
+#     [dependencies]
+#     rusty-figlet = { version = "0.3", default-features = false,
+#                      features = ["figlet-v01-compat"] }
+figlet-v01-compat = ["cli", "color", "rainbow", "terminal-width", "completions"]
 
 # Leaves -----------------------------------------------------------------------
 

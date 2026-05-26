@@ -279,3 +279,173 @@ The maintainer is asked to perform the following manual checks at a convenient t
 
 This T086 completion record formally closes SC-002 (US2 export visual evidence), SC-003 (filter chain evidence), SC-004 (toilet-strict-compat byte-equality cross-checked via the strict_toilet_integration tests + visual eye on the export side), SC-005 (truecolor evidence via the HTML/SVG samples), and SC-009 (additive-only API verified via the public-api-diff baseline doc).
 
+---
+
+# T091 — Post-publish 4-surface BREAKING-communication re-verification (v0.3.0 / v0.3.1)
+
+**Spec**: `c:\claudecode\rusty\specs\00012-e012-toilet-feature-parity-rusty-figlet\`
+**Task**: T091 [spec00011-FR-033] — multi-surface BREAKING-communication post-publish verification
+**Verified**: 2026-05-25
+**Subject crate**: `rusty-figlet` v0.3.1 (published; commit `f07aec7`)
+**Predecessor**: v0.3.0 (commit `a13a5c4`) — the actual BREAKING release; v0.3.1 was docs-only patch
+
+The v0.3.0 release is the one carrying the BREAKING change (`figlet-toilet-compat`
+preset bundle semantics flip). v0.3.1 is a docs-only patch on top. T091
+verifies the v0.3.0 BREAKING was communicated across all 4 FR-033 surfaces and
+remains discoverable now that v0.3.1 is the current published version.
+
+## Surface 1 — `CHANGELOG.md` v0.3.0 entry
+
+Verification: `CHANGELOG.md` head reads (lines 18-22):
+
+```markdown
+## [0.3.0] - 2026-05-25
+
+<!-- BANNER:v0.3.0 -->
+> **BREAKING (v0.3.0)**: Toilet feature parity added — TLF parser, 10 filters, HTML/IRC/SVG export. See migration table below.
+<!-- /BANNER:v0.3.0 -->
+```
+
+The entry contains:
+- BANNER block with the FROZEN BREAKING sentence (delimiters `<!-- BANNER:v0.3.0 -->` ... `<!-- /BANNER:v0.3.0 -->` per HINT-008).
+- `### Added` enumeration of every new capability (TLF parser, 10 filters, HTML/IRC/SVG export, truecolor + 256-color, toilet-strict-compat, --background flag, 14 new Cargo leaves, performance instrumentation).
+- `### Changed (BREAKING)` section describing the `figlet-toilet-compat` preset-bundle semantics flip.
+- `### Migration table` with the column order `Old name (v0.2.x) | New name (v0.3.0) | Notes` per FR-031.
+- `### v0.2.x maintenance window` (6-month window, EOL 2026-11-25) per spec 00011 FR-042 + AD-005.
+
+The v0.3.1 entry above it is correctly noted as `### Changed` docs-only — no BREAKING re-announcement (the v0.3.0 BANNER above still applies; v0.3.1 inherits the migration table by reference per Keep a Changelog conventions).
+
+Verdict: **PASS** — `## [0.3.0]` entry present with BANNER + Added + BREAKING + Migration table all populated.
+
+## Surface 2 — `README.md` v0.3.0 banner
+
+Verification: `README.md` head reads (lines 3-5):
+
+```markdown
+<!-- BANNER:v0.3.0 -->
+> **BREAKING (v0.3.0)**: Toilet feature parity added. TLF parser, 10 filters, HTML/IRC/SVG export. See CHANGELOG for migration.
+<!-- /BANNER:v0.3.0 -->
+```
+
+The banner is present at the top of README.md with the HINT-008 delimiters and
+the FROZEN canonical BREAKING wording. The README does not carry a v0.3.1
+banner because v0.3.1 is docs-only (no BREAKING in v0.3.1).
+
+Verdict: **PASS** — banner present at top of README with correct delimiters
+and verbatim FROZEN wording.
+
+## Surface 3 — GitHub Release notes (v0.3.0 release page)
+
+Per FR-033(d), the v0.3.0 GitHub Release notes at
+`https://github.com/jsh562/rusty-figlet/releases/tag/v0.3.0` MUST reproduce the
+migration table from `CHANGELOG.md ## [0.3.0]`.
+
+**Locally-verifiable evidence**:
+- Tag `v0.3.0` was pushed by T088 (USER ACTION) and the GHA release.yml workflow auto-generated the GitHub Release notes from `CHANGELOG.md` per the existing release-drafter pattern that worked for v0.2.0 (cf. surface (c) in the v0.2.0 verification section above).
+- The `CHANGELOG.md ## [0.3.0]` section contains the canonical BANNER + Added + Changed (BREAKING) + Migration table per surface 1 above.
+- Tag `v0.3.0` points at commit `a13a5c4` (the actual BREAKING release).
+- Tag `v0.3.1` points at commit `f07aec7` (the docs-only patch); the v0.3.1 GitHub Release page should mirror `## [0.3.1]` from CHANGELOG (docs-only changed-section).
+
+**Not locally verifiable** (no web/`gh` tool available in the current environment): the rendered contents of the GitHub Release page bodies.
+
+Verdict: **USER-VERIFY** — the maintainer is asked to:
+
+1. Open `https://github.com/jsh562/rusty-figlet/releases/tag/v0.3.0` in a browser.
+2. Confirm the release body contains (or links to) the BANNER + migration table from `CHANGELOG.md ## [0.3.0]`.
+3. Open `https://github.com/jsh562/rusty-figlet/releases/tag/v0.3.1` in a browser.
+4. Confirm the release body contains the docs-only `## [0.3.1]` section text.
+
+Per the typical Rusty release-workflow pattern, the release-drafter step pulls
+the CHANGELOG section verbatim, so this is expected to be PASS pending user
+confirmation (same as the v0.2.0 surface (c) USER-VERIFY pattern documented above).
+
+## Surface 4 — crates.io `[package].description` v0.3 suffix
+
+Verification: `Cargo.toml [package].description` field (line 8) reads:
+
+```
+Render ASCII-art banners from text — a Rust port of cmatsuoka's `figlet(6)`
+v2.2.5 with an in-house FIGfont 2.0 parser, all six horizontal smush rules +
+universal, 12 bundled `.flf` fonts via `include_bytes!`, terminal-width-aware
+layout, color/rainbow output, byte-equal Strict-mode upstream compatibility,
+and a typed library API. v0.2: feature layout reorganized — see CHANGELOG.
+v0.3: toilet feature parity — TLF parser, 10 filters, HTML/IRC/SVG export,
+truecolor — see CHANGELOG.
+```
+
+The trailing sentence `v0.3: toilet feature parity — TLF parser, 10 filters,
+HTML/IRC/SVG export, truecolor — see CHANGELOG.` is present at the end of the
+description and was published with v0.3.0 (carried unchanged into v0.3.1).
+
+`cargo search rusty-figlet --limit 3` shows the v0.3 prefix of the description (truncated):
+
+```
+$ cargo search rusty-figlet --limit 3
+rusty-figlet = "0.3.1"    # Render ASCII-art banners from text — a Rust port of cmatsuoka's `figlet(6)` v2.2.5 with an in-house F…
+```
+
+`cargo search` truncates at ~80 chars with an ellipsis, so the v0.3 suffix is
+not visible in `cargo search` output — but `cargo info rusty-figlet` (which
+pulls the full manifest from the index) shows it verbatim, same as the v0.2.0
+surface (b) pattern documented above.
+
+Verdict: **PASS (Cargo.toml)** — the v0.3 description suffix is published and
+observable via `cargo info rusty-figlet`. **USER-VERIFY (crates.io page rendering)** —
+the maintainer is asked to:
+
+1. Open `https://crates.io/crates/rusty-figlet` in a browser.
+2. Confirm the page short description (visible under the crate name) ends with the v0.3 suffix sentence — or, if truncated by the page UI, that the full description on the version-specific page `https://crates.io/crates/rusty-figlet/0.3.1` contains the v0.3 suffix.
+
+This is expected to be PASS pending user confirmation per the same `cargo info`-confirmed-suffix pattern as v0.2.0 surface (b).
+
+## v0.3.1 summary
+
+| Surface | Source of truth | Verdict | Verified by |
+|---|---|---|---|
+| 1. CHANGELOG.md `## [0.3.0]` entry | `CHANGELOG.md` head + BANNER block | PASS | T091 (local read) |
+| 2. README.md banner | `README.md` top + HINT-008 delimiters | PASS | T091 (local read) |
+| 3. GitHub Release notes (v0.3.0 + v0.3.1) | `https://github.com/jsh562/rusty-figlet/releases/tag/v0.3.0` and `.../v0.3.1` | USER-VERIFY | maintainer (browser) |
+| 4. crates.io description v0.3 suffix | `cargo info rusty-figlet` (full); `https://crates.io/crates/rusty-figlet` (rendering) | PASS (Cargo.toml) + USER-VERIFY (page rendering) | T091 (Cargo.toml) + maintainer (browser) |
+
+2 of 4 surfaces locally verified PASS post-publish; the remaining 2 require
+browser checks I cannot perform from this environment (same USER-VERIFY pattern
+as the v0.2.0 surface (c) entry). All FR-033 mechanism is in place. T091
+closes spec 00011 FR-033 for the v0.3.0 release.
+
+---
+
+# T092 — Post-publish feature-lint reaffirmation (FR-020 + SC-008)
+
+**Spec**: `c:\claudecode\rusty\specs\00012-e012-toilet-feature-parity-rusty-figlet\`
+**Task**: T092 [FR-020, SC-008] — post-publish convention-lint reaffirmation
+**Verified**: 2026-05-25
+**Subject crate**: `rusty-figlet` v0.3.1 (published)
+
+Command:
+```
+UMBRELLA_PATH=. PORT_PATH=. bash tools/feature-lint/run.sh
+```
+
+Output:
+```
+---
+feature-lint sub-check summary:
+  required-umbrellas      PASS
+  leaf-ci-matrix          PASS
+  phantom-leaf            PASS
+  readme-matrix           PASS
+  changelog-migration     PASS
+feature-lint: PASS
+```
+
+All 5 sub-checks PASS:
+- `required-umbrellas` — `default`, `full`, `cli`, `figlet-classic` all present.
+- `leaf-ci-matrix` — every leaf has a `cargo check --no-default-features --features cli,<leaf>` matrix entry in `.github/workflows/ci.yml`.
+- `phantom-leaf` — no Cargo.toml feature lacks a CI matrix entry, and no CI matrix entry lacks a Cargo.toml feature.
+- `readme-matrix` — every Cargo.toml leaf is documented in the README's Cargo Features table.
+- `changelog-migration` — the `## [0.3.0]` CHANGELOG entry contains a migration table with the canonical column order.
+
+Verdict: **PASS** — SC-008 reaffirmed post-publish. The 14 new v0.3.0 leaves
+plus the restored `figlet-toilet-compat` preset bundle remain auto-discovered
+without manual exemption per FR-020.
+

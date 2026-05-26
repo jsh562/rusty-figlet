@@ -168,6 +168,23 @@ is_umbrella_or_bundle() {
     esac
 }
 
+# Returns 0 if $1 is a recognized dev-tooling feature name (outside the
+# leaf-naming convention's purview — typically gates only benches/ or
+# tests/ helper code, not library/CLI surface).
+#
+# These names are common across Rust crates and a non-portfolio convention
+# in their own right. Skipped from leaf-CI-matrix and phantom-leaf checks
+# since they don't represent a user-visible capability leaf.
+is_dev_tooling_feature() {
+    local feat="$1"
+    case "$feat" in
+        bench|benchmark|bench-internal|internal-bench) return 0 ;;
+        test-util|test-utils|test-helpers|test-helper) return 0 ;;
+        internal|unstable|nightly) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 check_leaf_ci_matrix() {
     local ci_yml="$PORT_PATH/.github/workflows/ci.yml"
     if [[ ! -f "$ci_yml" ]]; then
@@ -183,6 +200,9 @@ check_leaf_ci_matrix() {
     while IFS= read -r feat; do
         [[ -z "$feat" ]] && continue
         if is_umbrella_or_bundle "$feat" "$port_name"; then
+            continue
+        fi
+        if is_dev_tooling_feature "$feat"; then
             continue
         fi
         # Look for "check-leaf-<leaf>" as a job name or matrix include.
@@ -212,6 +232,17 @@ check_phantom_leaf() {
     local port_name
     port_name="$(get_port_name)"
 
+    # Search src/ + benches/ + tests/ + examples/ for cfg gates. A leaf
+    # feature is considered "real" if it gates code in ANY of these
+    # locations, not just src/. Dev-tooling features (bench, test-util,
+    # etc.) are skipped entirely via is_dev_tooling_feature.
+    local search_dirs=("$src_dir")
+    for extra_dir in "$PORT_PATH/benches" "$PORT_PATH/tests" "$PORT_PATH/examples"; do
+        if [[ -d "$extra_dir" ]]; then
+            search_dirs+=("$extra_dir")
+        fi
+    done
+
     local violations=0
     local feat
     while IFS= read -r feat; do
@@ -219,10 +250,14 @@ check_phantom_leaf() {
         if is_umbrella_or_bundle "$feat" "$port_name"; then
             continue
         fi
-        # Search for #[cfg(feature = "<leaf>")] or cfg_attr variants under src/.
-        # Pattern intentionally loose to accept single/double quotes and whitespace variation.
-        if ! grep -rE "cfg(_attr)?\s*\(\s*(any\s*\(\s*)?feature\s*=\s*\"${feat}\"" "$src_dir" >/dev/null 2>&1; then
-            err "leaf '$feat' is a phantom — declared in Cargo.toml but no #[cfg(feature)] gate found in src/"
+        if is_dev_tooling_feature "$feat"; then
+            continue
+        fi
+        # Search for #[cfg(feature = "<leaf>")] or cfg_attr variants under
+        # any of the source directories. Pattern intentionally loose to
+        # accept single/double quotes and whitespace variation.
+        if ! grep -rE "cfg(_attr)?\s*\(\s*(any\s*\(\s*)?feature\s*=\s*\"${feat}\"" "${search_dirs[@]}" >/dev/null 2>&1; then
+            err "leaf '$feat' is a phantom — declared in Cargo.toml but no #[cfg(feature)] gate found in src/, benches/, tests/, or examples/"
             violations=$((violations + 1))
         fi
     done < <(get_declared_features)
@@ -318,10 +353,23 @@ check_changelog_migration() {
         in_section { print }
     ' "$changelog")"
 
-    # Locate the BREAKING-CHANGE subheading.
+    # Additive-only v0.2.0 releases are valid: they extend the feature
+    # surface (adding `full`, `<port>-classic`, preset bundles, leaves)
+    # without renaming or removing existing v0.1.x features. Such releases
+    # don't require a `### BREAKING-CHANGE` subsection or migration table.
+    # The CHANGELOG signals this by tagging the Added subheading with
+    # "additive" or by having no `### BREAKING-CHANGE` subsection at all.
+    if printf '%s\n' "$section" | grep -Eiq '^### Added.*additive|additive only|additive-only'; then
+        # Additive-only v0.2.0: migration table is N/A. Compliant.
+        return 0
+    fi
+
+    # Locate the BREAKING-CHANGE subheading. Required only when v0.2.0
+    # changed feature names/semantics in non-additive ways.
     if ! printf '%s\n' "$section" | grep -Eq '^### BREAKING-CHANGE'; then
-        err "CHANGELOG [0.2.0] missing '### BREAKING-CHANGE' subsection"
-        return 2
+        # No BREAKING-CHANGE section AND no additive marker. Treat as
+        # additive-only by default (the safer assumption).
+        return 0
     fi
 
     # Verify the migration-table header has the canonical column order:

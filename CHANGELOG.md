@@ -4,6 +4,16 @@ All notable changes to `rusty-figlet` are documented here. The format follows [K
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-05-25
+
+### Added (additive only — no v0.2.x behavior changed)
+
+- **`figlet-v01-compat` preset bundle** restoring v0.1.0's `cli` umbrella composition. v0.2.0 narrowed `cli` from `["dep:clap", "dep:clap_complete", "dep:anstyle", "dep:termcolor", "dep:terminal_size"]` to just `["dep:clap"]`, with color/completions/terminal-width carved out as separate leaves. Users who had `default-features = false, features = ["cli"]` in v0.1.0 got a narrower build starting at v0.2.0. The new `figlet-v01-compat` alias composes `["cli", "color", "rainbow", "terminal-width", "completions"]` to restore the v0.1.0 semantic. Migration:
+  ```toml
+  rusty-figlet = { version = "0.3", default-features = false, features = ["figlet-v01-compat"] }
+  ```
+  No deprecation: `cli` retains its v0.2.x-narrow semantic; `figlet-v01-compat` is the explicit-opt-in v0.1.0 surface restoration.
+
 ## [0.3.1] - 2026-05-25
 
 ### Changed
