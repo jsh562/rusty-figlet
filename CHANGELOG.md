@@ -4,6 +4,12 @@ All notable changes to `rusty-figlet` are documented here. The format follows [K
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-05-26
+
+### Fixed (tests only — no code or API changes)
+
+- **`tests/filter_scaling.rs` flakes on Apple Silicon CI.** The `filter_chain_scales_linearly` test had a secondary sanity assertion (`t5 ≤ 6× t1`) that compared N=5 wall-clock against N=1. At N=1 (~5 µs) the per-call overhead dominates and CI runner noise produces unreliable ratios; observed in CI: N=1=4541 ns, N=5=29417 ns, N=10=17875 ns, N=20=34666 ns. N=10 measuring faster than N=5 confirmed the noise. Dropped the t5/t1 sanity check; kept the load-bearing SC-012 assertion (N=20 ≤ 2.5× N=10). A real quadratic regression would push N=20 to 4× N=10, well over the 2.5× limit, so the linearity contract is still enforced. Diagnostic timings are still printed to stderr. No production code touched.
+
 ## [0.3.3] - 2026-05-26
 
 ### Changed (docs only — no code changes)
