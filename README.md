@@ -1,7 +1,7 @@
 # rusty-figlet
 
 <!-- BANNER:v0.3.0 -->
-> **BREAKING (v0.3.0)**: Toilet feature parity added — TLF parser, 10 filters, HTML/IRC/SVG export. See CHANGELOG for migration.
+> **BREAKING (v0.3.0)**: Toilet feature parity added. TLF parser, 10 filters, HTML/IRC/SVG export. See CHANGELOG for migration.
 <!-- /BANNER:v0.3.0 -->
 
 [![crates.io](https://img.shields.io/crates/v/rusty-figlet.svg)](https://crates.io/crates/rusty-figlet)
@@ -10,7 +10,11 @@
 [![MSRV](https://img.shields.io/badge/MSRV-1.85-blue.svg)](#msrv)
 [![license: MIT OR Apache-2.0](https://img.shields.io/crates/l/rusty-figlet.svg)](#license)
 
-Render ASCII-art banners from text. A Rust port of [cmatsuoka's `figlet(6)`](http://www.figlet.org/) v2.2.5 with an in-house FIGfont 2.0 parser, all six horizontal smush rules + universal fallback, 12 bundled `.flf` fonts via `include_bytes!`, terminal-width-aware layout, color/rainbow output (toilet-style per-column gradient), byte-equal Strict-mode upstream compatibility, and a typed library API.
+Render ASCII-art banners from text. Rust port of [cmatsuoka's `figlet(6)`](http://www.figlet.org/) v2.2.5 & [Sam Hocevar's `toilet(1)`](http://caca.zoy.org/wiki/toilet) v0.3-1.
+
+Ships 12 bundled `.flf` fonts + 3 `.tlf` fonts via `include_bytes!`. Six horizontal smush rules. Terminal-width-aware layout. 16-color, 256-color, & 24-bit truecolor output. The 10 toilet filters (`crop`, `gay`, `metal`, `flip`, `flop`, `180`, `left`, `right`, `border`, `nothing`) composable into pipelines. HTML, IRC mIRC, & SVG export. Byte-equal strict-compat modes for both figlet 2.2.5 & toilet 0.3-1.
+
+Every capability sits behind a Cargo feature. `default-features = false` strips the entire CLI surface back to the in-house FIGfont parser; pulls only `thiserror`.
 
 Part of the [Rusty portfolio](https://jsh562.github.io/rusty-portfolio).
 
@@ -59,6 +63,39 @@ rusty-figlet -m 24 "explicit"       # -m N
 rusty-figlet --color=always "color"
 rusty-figlet --rainbow "rainbow"   # per-column HSV gradient (toilet-style)
 
+# 24-bit truecolor / 256-color output (auto-detect via COLORTERM, or force)
+rusty-figlet --truecolor "vivid"   # \x1b[38;2;R;G;Bm sequences
+rusty-figlet --ansi256 "256-color" # \x1b[38;5;Nm sequences
+
+# Background color (named ANSI or #RRGGBB hex)
+rusty-figlet --background=blue "blue bg"
+rusty-figlet --background=#1A2B3C --truecolor "custom"
+
+# Toilet filter pipeline (-F filter1:filter2:... left-to-right)
+rusty-figlet "Hello" -F crop                  # trim surrounding blanks
+rusty-figlet "Hello" -F gay                   # per-column rainbow
+rusty-figlet "Hello" -F metal                 # blue/gray metallic gradient
+rusty-figlet "Hello" -F border                # box-drawing border around output
+rusty-figlet "Hello" -F flip                  # mirror horizontally
+rusty-figlet "Hello" -F flop                  # mirror vertically
+rusty-figlet "Hello" -F 180                   # rotate 180°
+rusty-figlet "Hello" -F left                  # rotate 90° CCW
+rusty-figlet "Hello" -F right                 # rotate 90° CW
+rusty-figlet "Hello" -F crop:metal:border     # chain, applied left-to-right
+rusty-figlet "Hello" -F gay -F border         # multi-flag also concatenates
+
+# Multi-format export (-E html | irc | svg), safe-to-embed XSS-defended
+rusty-figlet "Hello" -E html > banner.html    # HTML5 fragment with inline CSS
+rusty-figlet "Hello" -E svg  > banner.svg     # SVG 1.1 with <text> + fill attrs
+rusty-figlet "Hello" -E irc  > banner.irc     # mIRC ^C color codes
+rusty-figlet "Hi" -F gay:border -E html > rainbow-bordered.html
+
+# Toilet-strict-compat (byte-equal upstream toilet 0.3-1 stdout)
+rusty-figlet --strict "Hello" -F gay          # 16-color floor, byte-equal toilet
+
+# Suppress downgrade warning when truecolor is requested but unsupported
+rusty-figlet --truecolor --no-downgrade-warning "quiet"
+
 # Paragraph mode (preserve newlines vs collapse)
 rusty-figlet -p "paragraph"
 rusty-figlet -n "normal"
@@ -67,11 +104,13 @@ rusty-figlet -n "normal"
 rusty-figlet -C custom.flc "Hello"
 rusty-figlet -N "Hello"
 
-# Strict mode rejects color flags + control files + completions subcommand
-rusty-figlet --strict --color=always "X"   # → exit 2, unrecognized option
+# Figlet-strict mode rejects color flags + control files + completions subcommand
+rusty-figlet --strict --color=always "X"   # → exit 2, unrecognized option (figlet 2.2.5 contract)
 ```
 
 ## Library API
+
+### Plain figlet rendering (v0.1.x surface, unchanged)
 
 ```rust,no_run
 use rusty_figlet::{FigletBuilder, Font};
@@ -86,11 +125,55 @@ let banner = figlet.render("X").unwrap();
 print!("{banner}");
 ```
 
+### TLF font loading (v0.3.0, `tlf-parser` leaf)
+
+```rust,no_run
+# #[cfg(feature = "tlf-parser")]
+# {
+use rusty_figlet::Figlet;
+
+let figlet = Figlet::from_tlf("assets/fonts/mono9.tlf").unwrap();
+let banner = figlet.render("X").unwrap();
+print!("{banner}");
+# }
+```
+
+### Programmatic filter chain (v0.3.0, `filter-*` leaves)
+
+```rust,no_run
+# #[cfg(all(feature = "filter-crop", feature = "filter-border"))]
+# {
+use rusty_figlet::{FigletBuilder, filter::{Filter, FilterChain}};
+
+let figlet = FigletBuilder::new().build().unwrap();
+let grid = figlet.layout_render("Hello").unwrap();
+
+let chain = FilterChain::new()
+    .push(Filter::Crop)
+    .push(Filter::Border);
+let transformed = chain.apply(grid).unwrap();
+# }
+```
+
+### Multi-format export (v0.3.0, `output-*` leaves)
+
+```rust,no_run
+# #[cfg(feature = "output-html")]
+# {
+use rusty_figlet::export::{write_export, ExportFormat};
+# let grid = unimplemented!();
+
+let html_bytes = write_export(&grid, ExportFormat::Html).unwrap();
+std::fs::write("banner.html", html_bytes).unwrap();
+# }
+```
+
 For library-only consumers without CLI deps, see the [Cargo Features](#cargo-features) section below.
 
 ## Cargo Features
 
-`default` enables `full` which composes every leaf; `figlet-classic` reproduces v0.1.x bare-port behavior matching upstream `figlet 2.2.5` 1:1. Library consumers strip the entire CLI surface via `default-features = false`.
+`default` enables `full` which composes every leaf; `figlet-classic` reproduces v0.1.x bare-port behavior matching upstream `figlet 2.2.5` 1:1. 
+To strip it down use `default-features = false` or `--no-default-features` and then add the features you want.
 
 ### Feature matrix
 
@@ -102,13 +185,13 @@ For library-only consumers without CLI deps, see the [Cargo Features](#cargo-fea
 | `completions` | `completions <shell>` subcommand emitting bash/zsh/fish/powershell scripts. Pulls `clap_complete`. | `full` |
 | `strict-compat` | Hand-rolled upstream-byte-equal getopt parser + `--strict` dispatch path (figlet 2.2.5 target). | `full`, `figlet-classic` |
 | `tlf-parser` | TheLetter (`.tlf`) font-format parser per `tlf2a` magic. Adds `Figlet::from_tlf` + `Figlet::from_tlf_bytes`. | `full`, `figlet-toilet-compat` |
-| `filter-crop` | `Filter::Crop` — trim all-blank rows/cols. | `full`, `figlet-toilet-compat` |
-| `filter-gay` | `Filter::Gay` — per-column rainbow palette sweep (toilet `--gay`). | `full`, `figlet-toilet-compat` |
-| `filter-metal` | `Filter::Metal` — blue/gray metallic gradient. | `full`, `figlet-toilet-compat` |
-| `filter-flip` | `Filter::Flip` — horizontal mirror (reverse each row). | `full`, `figlet-toilet-compat` |
-| `filter-flop` | `Filter::Flop` — vertical mirror (reverse row order). | `full`, `figlet-toilet-compat` |
-| `filter-rotate` | `Filter::Rotate180`, `RotateLeft`, `RotateRight` — three rotations share one leaf. | `full`, `figlet-toilet-compat` |
-| `filter-border` | `Filter::Border` — Unicode box-drawing wrap. | `full`, `figlet-toilet-compat` |
+| `filter-crop` | `Filter::Crop`. Trim all-blank rows & cols. | `full`, `figlet-toilet-compat` |
+| `filter-gay` | `Filter::Gay`. Per-column rainbow palette sweep (toilet `--gay`). | `full`, `figlet-toilet-compat` |
+| `filter-metal` | `Filter::Metal`. Blue/gray metallic gradient. | `full`, `figlet-toilet-compat` |
+| `filter-flip` | `Filter::Flip`. Horizontal mirror (reverse each row). | `full`, `figlet-toilet-compat` |
+| `filter-flop` | `Filter::Flop`. Vertical mirror (reverse row order). | `full`, `figlet-toilet-compat` |
+| `filter-rotate` | `Filter::Rotate180`, `RotateLeft`, `RotateRight`. Three rotations share one leaf. | `full`, `figlet-toilet-compat` |
+| `filter-border` | `Filter::Border`. Unicode box-drawing wrap. | `full`, `figlet-toilet-compat` |
 | `color-truecolor` | 24-bit SGR emission (`\x1b[38;2;R;G;Bm`). Implies `color`. Enables `--truecolor`. | `full` |
 | `color-256` | 256-color SGR emission (`\x1b[38;5;Nm`). Implies `color`. Enables `--ansi256`. | `full` |
 | `output-html` | HTML5 export with inline-CSS spans (`-E html`). Safe-to-embed: 4-char XSS escape applied to all text + double-quoted attributes per spec Security Posture. | `full` |
@@ -121,13 +204,17 @@ For library-only consumers without CLI deps, see the [Cargo Features](#cargo-fea
 | Bundle | Composition | Use case |
 |---|---|---|
 | `figlet-classic` | `cli` + `strict-compat` | Drop-in upstream `figlet 2.2.5` replacement. No color, no rainbow, no terminal-width auto-detect, no completions subcommand. |
-| `figlet-minimal` | `cli` | Bare-bones binary — no Strict mode, no extras. Smallest functional CLI. |
+| `figlet-minimal` | `cli` | Bare-bones binary, no Strict mode, no extras. Smallest functional CLI. |
 | `figlet-color` | `cli` + `color` + `rainbow` | Modern figlet with color + per-column gradient output; no Strict mode or `-t` auto-detect. Retained at v0.2.x semantics per AD-010 for users who relied on the v0.2.x `figlet-toilet-compat` deprecated alias. |
-| `figlet-toilet-compat` (**v0.3.0 BREAKING**) | `cli` + `color` + `rainbow` + `tlf-parser` + `filter-crop` + `filter-gay` + `filter-metal` + `filter-flip` + `filter-flop` + `filter-rotate` + `filter-border` | **v0.3.0 semantics restored** — actual toilet capability parity: TLF font loading + all 10 filters + color/rainbow. v0.2.x users who relied on this name as an alias for `figlet-color` should migrate to `figlet-color` (unchanged). HTML/IRC/SVG export + truecolor + strict-compat-toilet are intentionally NOT in this bundle (opt-in only — orthogonal capabilities). |
+| `figlet-toilet-compat` (**v0.3.0 BREAKING**) | `cli` + `color` + `rainbow` + `tlf-parser` + `filter-crop` + `filter-gay` + `filter-metal` + `filter-flip` + `filter-flop` + `filter-rotate` + `filter-border` | **v0.3.0 semantics restored**. Actual toilet capability parity: TLF font loading, all 10 filters, color, rainbow. v0.2.x users who relied on this name as a `figlet-color` alias should switch to `figlet-color` (unchanged). HTML, IRC, & SVG export, truecolor, & toilet-strict-compat are opt-in separately. They aren't bundled here so users pick which output paths to ship. |
 
-### Safe-to-embed HTML/SVG guarantee
+### Safe-to-embed HTML/SVG output
 
-The `output-html` and `output-svg` backends apply a hand-rolled 4-character XSS escape (`<` → `&lt;`, `>` → `&gt;`, `&` → `&amp;`, `"` → `&quot;`) to every text-content byte AND every double-quoted attribute value. SVG additionally never emits `<script>`, `<foreignObject>`, `href`, `xlink:href`, or `<image href=...>` slots — no path exists from a user-controlled byte into a script-execution context. The `--background` CLI flag accepts only the 16 named ANSI colors or `#RRGGBB` hex; anything else (newlines, ANSI escape bytes, shell metachars, partial hex) is rejected at parse time before any export emission. See `src/export/html.rs` and `src/export/svg.rs` for the implementations; `tests/export_integration.rs` for the XSS-payload + UTF-8 + bidirectional script coverage.
+The `output-html` & `output-svg` backends apply a hand-rolled 4-character escape to every text-content byte & every double-quoted attribute value: `<` → `&lt;`, `>` → `&gt;`, `&` → `&amp;`, `"` → `&quot;`. The SVG backend never emits `<script>`, `<foreignObject>`, `href`, `xlink:href`, or `<image href=...>`. A user-controlled byte cannot reach a script-execution context.
+
+The `--background` CLI flag accepts only the 16 named ANSI colors or `#RRGGBB` hex. Newlines, ANSI escape bytes, shell metacharacters, & partial hex are rejected at parse time before any export emission.
+
+Implementations: `src/export/html.rs`, `src/export/svg.rs`. XSS-payload, UTF-8, & bidirectional-script test coverage: `tests/export_integration.rs`.
 
 ### Keep-list workaround (Cargo features are union-only)
 
@@ -148,29 +235,29 @@ For the common cases the named [preset bundles](#preset-bundles) above are usual
 rusty-figlet = { version = "0.2", default-features = false }
 ```
 
-This strips `clap`, `clap_complete`, `anstyle`, `termcolor`, and `terminal_size`, leaving only `thiserror` and the in-house FIGfont parser. Verified by `tests/library_api.rs` and the CI `test-no-default` job's `cargo tree --no-default-features` audit (per SC-001 of spec 00011).
+This strips `clap`, `clap_complete`, `anstyle`, `termcolor`, & `terminal_size`. The resulting build pulls only `thiserror` & the in-house FIGfont parser. The CI `test-no-default` job runs `cargo tree --no-default-features` on every PR & fails the build if any CLI-only dep leaks back in.
 
 ### Convention authority
 
-This layout follows the **portfolio-wide Cargo Features Convention** codified in [ADR-0006](https://github.com/jsh562/rustylib/blob/main/specs/adrs/0006-cargo-features-convention-for-portfolio-ports.md) (the "why" — option analysis + rationale) and [`project-instructions.md` §Cargo Feature Surface](https://github.com/jsh562/rustylib/blob/main/project-instructions.md) (the "what" — canonical rules per per-port crate). Every Rusty port from v0.2 onward exposes the same umbrella set (`default`/`full`/`cli`/`<port>-classic`), per-port leaves named in kebab-case, and 2–4 preset bundles.
+This layout follows the portfolio-wide Cargo Features Convention. The "why" lives in [ADR-0006](https://github.com/jsh562/rustylib/blob/main/specs/adrs/0006-cargo-features-convention-for-portfolio-ports.md) (option analysis & rationale); the "what" lives in [`project-instructions.md` §Cargo Feature Surface](https://github.com/jsh562/rustylib/blob/main/project-instructions.md) (canonical rules per port). Every Rusty port from v0.2 onward exposes the same umbrella set (`default`/`full`/`cli`/`<port>-classic`), per-port leaves named in kebab-case, & 2 to 4 preset bundles.
 
 ## Compatibility
 
 `rusty-figlet` has two modes:
 
-- **Default** — clap-styled flag parser; UTF-8 input; `--color`/`--rainbow` enabled; `-C`/`-N` accepted-but-ignored with a one-time stderr warning; `-t` auto-applied when stdout is a tty AND `-w` is not set; `completions` subcommand for shell-tab generation.
-- **Strict** (`--strict` flag, `RUSTY_FIGLET_STRICT=1` env, or argv[0] = `figlet`/`figlet-alias`) — byte-equal stdout against upstream `figlet 2.2.5` for documented diagnostics; Latin-1 input clamp; last-wins flag resolution; rejects `-C`, `-N`, `--color`, `--rainbow`, `completions` with upstream-format getopt errors (short: `invalid option -- '<char>'`; long: `unrecognized option '--<name>'`); no `-t` auto-apply.
+- **Default mode.** clap-styled flag parser. UTF-8 input. `--color` & `--rainbow` enabled. `-C`/`-N` accepted-but-ignored with a one-time stderr warning. `-t` auto-applied when stdout is a tty AND `-w` is not set. `completions` subcommand emits shell tab-completion scripts.
+- **Strict mode** (activated by `--strict`, the `RUSTY_FIGLET_STRICT=1` env var, or invoking the binary as `figlet`/`figlet-alias`). Byte-equal stdout against upstream `figlet 2.2.5` for documented diagnostics. Latin-1 input clamp. Last-wins flag resolution. Rejects `-C`, `-N`, `--color`, `--rainbow`, & `completions` with upstream-format getopt errors (short: `invalid option -- '<char>'`; long: `unrecognized option '--<name>'`). No `-t` auto-apply.
 
 Precedence for Strict activation: `--strict` > `RUSTY_FIGLET_STRICT` env > argv[0]. `--no-strict` overrides every lower-precedence source; if `--strict` and `--no-strict` both appear on the command line, last-wins on the command line per upstream getopt convention.
 
-### v0.1.0 excludes
+### What's not shipped
 
-- **Vertical smushing** (rarely exercised; deferred to v0.2.0)
-- **Control files (`.flc`)** — `-C`/`-N` accepted-but-ignored in Default with one-time warning; rejected under Strict
-- **Right-to-left rendering** (`-L`/`-R`) — niche; deferred
-- **Font-info dump** (`-I <code>`) — debug-only; deferred
-- **Non-Latin bundled fonts** (`ivrit`, `smtengwar`, `smscript`, `smshadow`, `smslant`, `mnemonic`, `term`) — low signal for the Latin/English 99% target. Users add via `-d <dir>`.
-- **Custom non-FIGfont formats** (TLF / toilet TLF) — v0.1.0 targets `.flf` only.
+- **Vertical smushing.** Rarely exercised. Deferred.
+- **Control files (`.flc`).** `-C`/`-N` are accepted-but-ignored in Default mode with a one-time warning. Strict mode rejects them.
+- **Right-to-left rendering (`-L`/`-R`).** Niche. Deferred.
+- **Font-info dump (`-I <code>`).** Debug-only. Deferred.
+- **Non-Latin bundled fonts** (`ivrit`, `smtengwar`, `smscript`, `smshadow`, `smslant`, `mnemonic`, `term`). Low signal for the Latin/English 99% target. Users add their own via `-d <dir>`.
+- **Toilet TLF fonts beyond the 3 bundled placeholders** (`mono9.tlf`, `future.tlf`, `pagga.tlf`). The TLF parser ships in v0.3.0 via the `tlf-parser` leaf; the bundled fonts are placeholder glyphs pending a Linux-host capture pass for real upstream toilet bytes.
 
 ### Excluded flags in Strict mode (upstream-format diagnostics)
 
@@ -190,10 +277,10 @@ The program-name token is substituted `figlet:` → `rusty-figlet:` per `tests/c
 
 ### BREAKING-CHANGE vs upstream
 
-- **stdin 1 MiB cap** — `rusty-figlet` buffers stdin to a 1 MiB hard ceiling; upstream buffers unbounded. One-time stderr warning per process invocation when triggered.
-- **`-C`/`-N` Default behavior** — Default mode accepts the flags but emits a one-time `control files not yet implemented; ignoring -C/-N` stderr warning and proceeds rendering the input as-is (no transliteration). Strict mode rejects with upstream-format `invalid option -- 'C'` / `unrecognized option`.
-- **UTF-8 input in Default** — Default mode accepts UTF-8 bytes (Latin-1 + multibyte codepoints) and falls back to the font's missing-character glyph + one-time stderr warning when a codepoint isn't in the font's `<hexcode>` table. Strict mode clamps input to Latin-1 (ISO-8859-1) bytes-as-codepoints so the upstream byte-equal contract is preserved.
-- **`-t` Default auto-apply** — Default mode auto-applies `-t` when stdout is a tty AND `-w` is not set. Strict mode does NOT auto-apply `-t` (preserves byte-equal output at width 80).
+- **stdin 1 MiB cap.** `rusty-figlet` buffers stdin to a 1 MiB hard ceiling; upstream buffers unbounded. One-time stderr warning per process invocation when the cap is hit.
+- **`-C`/`-N` Default behavior.** Default mode accepts the flags & emits a one-time `control files not yet implemented; ignoring -C/-N` stderr warning, then renders the input as-is (no transliteration). Strict mode rejects with upstream-format `invalid option -- 'C'` / `unrecognized option`.
+- **UTF-8 input in Default.** Default mode accepts UTF-8 bytes (Latin-1 + multibyte codepoints) & falls back to the font's missing-character glyph + a one-time stderr warning when a codepoint isn't in the font's `<hexcode>` table. Strict mode clamps input to Latin-1 (ISO-8859-1) bytes-as-codepoints so the upstream byte-equal contract is preserved.
+- **`-t` Default auto-apply.** Default mode auto-applies `-t` when stdout is a tty AND `-w` is not set. Strict mode does NOT auto-apply `-t` (preserves byte-equal output at width 80).
 
 See [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) for the full per-flag matrix.
 

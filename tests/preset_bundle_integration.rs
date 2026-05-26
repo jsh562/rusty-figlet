@@ -110,9 +110,12 @@ fn full_umbrella_enumerates_v030_19_leaves() {
 }
 
 #[test]
-fn version_is_030() {
+fn version_is_v03_line() {
     let v = parse_features();
     let pkg = v.get("package").and_then(|p| p.as_table()).unwrap();
     let version = pkg.get("version").and_then(|x| x.as_str()).unwrap();
-    assert_eq!(version, "0.3.0");
+    assert!(
+        version.starts_with("0.3."),
+        "expected v0.3.x line; got {version}"
+    );
 }

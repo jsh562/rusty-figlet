@@ -4,6 +4,12 @@ All notable changes to `rusty-figlet` are documented here. The format follows [K
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-05-25
+
+### Changed
+
+- **Docs only**. README rewritten for readability per the `no-ai-slop` & `rossmann-voice` skills: removed em-dashes, tightened the description paragraph, restructured the Safe-to-embed HTML/SVG section, updated the "What's not shipped" list to reflect v0.3.0's TLF support, expanded the Usage section with example invocations for every new flag (`-F`, `-E`, `--truecolor`, `--ansi256`, `--background`, `--no-downgrade-warning`), and added Library-API sub-examples for `Figlet::from_tlf`, `FilterChain`, & `write_export`. No code changes; no public API change; SemVer-patch release per [Keep a Changelog].
+
 ### Planned for v0.1.1 (v0.1.x maintenance line)
 
 - Replace the 12 placeholder `.flf` fonts under `assets/fonts/` with the verbatim upstream cmatsuoka `figlet 2.2.5` fonts once a Linux-host capture pass is available. The v0.1.0 release ships syntactically-valid placeholder glyphs (height=1, 95 ASCII + 7 German codepoints via `<hexcode>` codetag blocks) — every code path (parser, smush, layout, rendering) is real and verified by 214 tests. Only the bundled glyph **art** is placeholder. See `THIRD_PARTY.md` §Pragmatic-Path Note for details.
