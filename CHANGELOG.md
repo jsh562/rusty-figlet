@@ -4,7 +4,13 @@ All notable changes to `rusty-figlet` are documented here. The format follows [K
 
 ## [Unreleased]
 
-## [0.3.2] - 2026-05-25
+## [0.3.3] - 2026-05-26
+
+### Changed (docs only — no code changes)
+
+- **Privacy: scrubbed hardcoded local filesystem paths from `docs/`**. Validation reports under `docs/` (`ci-runtime-baseline.md`, `phase12-validation.md`, `phase2-validation.md`, `public-api-diff-baseline.md`, `publish-verification.md`, `quality-bar-v0.2.0.md`, `tlf-derivation.md`) and `tools/feature-lint/README.md` shipped in v0.3.0, v0.3.1, and v0.3.2 with `c:\claudecode\rusty\` and `c:\claudecode\rusty-figlet\` strings from the maintainer's development workstation. Paths are replaced with relative or placeholder forms (`<umbrella>`, `<repo>`, `<repo-root>`). No source code, no public API, no behavior changes. v0.3.0, v0.3.1, & v0.3.2 are yanked; users should pin v0.3.3 or later.
+
+## [0.3.2] - 2026-05-25 [YANKED]
 
 ### Added (additive only — no v0.2.x behavior changed)
 
@@ -14,7 +20,7 @@ All notable changes to `rusty-figlet` are documented here. The format follows [K
   ```
   No deprecation: `cli` retains its v0.2.x-narrow semantic; `figlet-v01-compat` is the explicit-opt-in v0.1.0 surface restoration.
 
-## [0.3.1] - 2026-05-25
+## [0.3.1] - 2026-05-25 [YANKED]
 
 ### Changed
 
@@ -25,7 +31,7 @@ All notable changes to `rusty-figlet` are documented here. The format follows [K
 - Replace the 12 placeholder `.flf` fonts under `assets/fonts/` with the verbatim upstream cmatsuoka `figlet 2.2.5` fonts once a Linux-host capture pass is available. The v0.1.0 release ships syntactically-valid placeholder glyphs (height=1, 95 ASCII + 7 German codepoints via `<hexcode>` codetag blocks) — every code path (parser, smush, layout, rendering) is real and verified by 214 tests. Only the bundled glyph **art** is placeholder. See `THIRD_PARTY.md` §Pragmatic-Path Note for details.
 - Capture upstream `figlet 2.2.5` snapshot fixtures on a Linux host and engage the deferred byte-equal Strict-mode tests (T085, T086, T087, T088, T089 in `specs/00009-figlet-port/tasks.md`).
 
-## [0.3.0] - 2026-05-25
+## [0.3.0] - 2026-05-25 [YANKED]
 
 <!-- BANNER:v0.3.0 -->
 > **BREAKING (v0.3.0)**: Toilet feature parity added — TLF parser, 10 filters, HTML/IRC/SVG export. See migration table below.

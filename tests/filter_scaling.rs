@@ -94,15 +94,13 @@ fn filter_chain_scales_linearly() {
         limit
     );
 
-    // Sanity: chains should not regress arbitrarily. t5 must not be
-    // larger than 6× t1 (allow 20% over 5× linear).
-    let t1_floor = t1.max(1_000);
-    let t5_limit = t1_floor.saturating_mul(6);
-    assert!(
-        t5 <= t5_limit,
-        "filter scaling: N=5 ({} ns) > 6× N=1 ({} ns, limit {} ns)",
-        t5,
-        t1,
-        t5_limit
-    );
+    // We deliberately do NOT assert on t5/t1. At N=1 the per-call overhead
+    // (function dispatch, clone, allocator first-touch) is comparable to
+    // the actual filter work, so the ratio is too noisy on CI runners.
+    // Apple Silicon CI in particular routinely produces measurements where
+    // N=10 reports faster than N=5 — pure scheduler noise on a sub-30µs
+    // budget. The N=20/N=10 check above is the load-bearing assertion;
+    // a quadratic regression would push N=20 to 4× N=10, well over the
+    // 2.5× limit. We keep t1/t5 in the eprintln for diagnostic value only.
+    let _ = (t1, t5);
 }

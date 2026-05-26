@@ -2,7 +2,7 @@
 
 **Created**: 2026-05-25 (E012 Phase 3 — T014)
 **Module**: `src/tlf.rs` + `src/header.rs`
-**Authority**: spec `c:\claudecode\rusty\specs\00012-e012-toilet-feature-parity-rusty-figlet\spec.md` FR-001, plan HINT-001, AGENTS.md clean-room policy.
+**Authority**: spec `<umbrella>/specs/00012-e012-toilet-feature-parity-rusty-figlet\spec.md` FR-001, plan HINT-001, AGENTS.md clean-room policy.
 
 ## Attestation
 

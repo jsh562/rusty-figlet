@@ -1,6 +1,6 @@
 # rusty-figlet v0.2.0 — Phase 2 Validation Log
 
-**Spec**: `c:\claudecode\rusty\specs\00011-e011-cargo-features-convention-backfill\`
+**Spec**: `<umbrella>/specs/00011-e011-cargo-features-convention-backfill\`
 **Phase**: Phase 2 — Reference Port (T017..T033)
 **Validated**: 2026-05-25
 **Host**: Windows 10 Pro (PowerShell + Git Bash)
@@ -19,14 +19,14 @@ crates (clap, clap_complete, anstyle, termcolor, terminal_size).
 **Command**:
 
 ```
-cd c:\claudecode\rusty-figlet
+cd <repo-root>
 cargo tree --no-default-features --prefix none --edges normal --no-dedupe
 ```
 
 **Output** (captured 2026-05-25):
 
 ```
-rusty-figlet v0.2.0 (C:\claudecode\rusty-figlet)
+rusty-figlet v0.2.0 (<repo-root>)
 thiserror v2.0.18
 thiserror-impl v2.0.18 (proc-macro)
 proc-macro2 v1.0.106
@@ -148,9 +148,9 @@ umbrella repo; confirm exit 0.
 **Command**:
 
 ```bash
-UMBRELLA_PATH=c:/claudecode/rusty \
-  PORT_PATH=c:/claudecode/rusty-figlet \
-  bash c:/claudecode/rusty/tools/feature-lint/run.sh
+UMBRELLA_PATH=<umbrella> \
+  PORT_PATH=<repo-root> \
+  bash <umbrella>/tools/feature-lint/run.sh
 ```
 
 **Output**:
@@ -209,7 +209,7 @@ by inspection):
 trigger the full workflow. The maintainer captures the slowest matrix
 entry's wall-clock time from the GitHub Actions UI for 3 separate PR
 events (CI-only commits if necessary). Median of the 3 values is recorded
-in `c:\claudecode\rusty-figlet\docs\ci-runtime-baseline.md`. If median
+in `<repo>/docs\ci-runtime-baseline.md`. If median
 > 25 min, the v0.2.0 PR is BLOCKED per SC-010 HARD gate + Clarifications
 Q1, and remediation per HINT-010(a/b/c) is performed before merge.
 

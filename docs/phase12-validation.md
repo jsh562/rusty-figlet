@@ -116,7 +116,7 @@ Command: `cargo audit` (cargo-audit-audit 0.22.1).
 
 ```
     Fetching advisory database from `https://github.com/RustSec/advisory-db.git`
-      Loaded 1098 security advisories (from C:\Users\Zero2\.cargo\advisory-db)
+      Loaded 1098 security advisories
     Updating crates.io index
     Scanning Cargo.lock for vulnerabilities (125 crate dependencies)
 exit code: 0
@@ -130,13 +130,13 @@ Command: `cargo deny check licenses` (cargo-deny 0.19.4).
 
 ```
 warning[license-not-encountered]: license was not encountered
-   ┌─ C:\claudecode\rusty-figlet\deny.toml:15:6
+   ┌─ <repo>/deny.toml:15:6
    │
 15 │     "Artistic-1.0-Perl",
    │      ━━━━━━━━━━━━━━━━━ unmatched license allowance
 
 warning[license-not-encountered]: license was not encountered
-   ┌─ C:\claudecode\rusty-figlet\deny.toml:14:6
+   ┌─ <repo>/deny.toml:14:6
    │
 14 │     "Artistic-2.0",
    │      ━━━━━━━━━━━━ unmatched license allowance
@@ -164,11 +164,11 @@ uncommitted at this point in the iteration; Phase 13 (T087+) is the commit
 step.)
 
 ```
-   Packaging rusty-figlet v0.3.0 (C:\claudecode\rusty-figlet)
+   Packaging rusty-figlet v0.3.0 (<repo-root>)
     Packaged 119 files, 828.3KiB (229.7KiB compressed)
-   Verifying rusty-figlet v0.3.0 (C:\claudecode\rusty-figlet)
+   Verifying rusty-figlet v0.3.0 (<repo-root>)
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 8.69s
-   Uploading rusty-figlet v0.3.0 (C:\claudecode\rusty-figlet)
+   Uploading rusty-figlet v0.3.0 (<repo-root>)
 warning: aborting upload due to dry run
 ```
 

@@ -1,6 +1,6 @@
 # rusty-figlet v0.2.0 — Publish Verification (T034)
 
-**Spec**: `c:\claudecode\rusty\specs\00011-e011-cargo-features-convention-backfill\`
+**Spec**: `<umbrella>/specs/00011-e011-cargo-features-convention-backfill\`
 **Task**: T034 [COMPLETES FR-033] — multi-surface BREAKING-communication verification
 **Verified**: 2026-05-25
 **Subject crate**: `rusty-figlet` v0.2.0
@@ -89,7 +89,7 @@ delimiter pair per HINT-008. Verbatim from `README.md` lines 3-5:
 
 The em-dash (U+2014) is present (NOT substituted with `--`). The banner
 appears exactly once. The wording matches the FROZEN canonical sentence
-documented in `c:\claudecode\rusty\docs\feature-vocabulary.md` §Banner
+documented in `<umbrella>/docs/feature-vocabulary.md` §Banner
 Convention.
 
 Verdict: **PASS** — banner present at top of README with correct delimiters
@@ -101,8 +101,7 @@ Full feature-lint run against the published rusty-figlet repo at commit
 `b493d57`:
 
 ```
-$ UMBRELLA_PATH=/c/claudecode/rusty PORT_PATH=/c/claudecode/rusty-figlet \
-    bash /c/claudecode/rusty/tools/feature-lint/run.sh
+$ UMBRELLA_PATH="$PWD" PORT_PATH="$PWD" bash tools/feature-lint/run.sh
 ---
 feature-lint sub-check summary:
   required-umbrellas      PASS
@@ -135,7 +134,7 @@ plus the local-evidence support for (c).
 
 # rusty-figlet v0.3.0 — Publish Verification Checklist (T078)
 
-**Spec**: `c:\claudecode\rusty\specs\00012-e012-toilet-feature-parity-rusty-figlet\`
+**Spec**: `<umbrella>/specs/00012-e012-toilet-feature-parity-rusty-figlet\`
 **Task**: T078 [COMPLETES FR-017] — v0.3.0 BREAKING-communication checklist per spec 00011 FR-033 (4 surfaces)
 **Status**: pre-publish — surfaces (a), (b), (d) populated; surface (c) is a stub for post-publish fill-in
 
@@ -283,7 +282,7 @@ This T086 completion record formally closes SC-002 (US2 export visual evidence),
 
 # T091 — Post-publish 4-surface BREAKING-communication re-verification (v0.3.0 / v0.3.1)
 
-**Spec**: `c:\claudecode\rusty\specs\00012-e012-toilet-feature-parity-rusty-figlet\`
+**Spec**: `<umbrella>/specs/00012-e012-toilet-feature-parity-rusty-figlet\`
 **Task**: T091 [spec00011-FR-033] — multi-surface BREAKING-communication post-publish verification
 **Verified**: 2026-05-25
 **Subject crate**: `rusty-figlet` v0.3.1 (published; commit `f07aec7`)
@@ -416,7 +415,7 @@ closes spec 00011 FR-033 for the v0.3.0 release.
 
 # T092 — Post-publish feature-lint reaffirmation (FR-020 + SC-008)
 
-**Spec**: `c:\claudecode\rusty\specs\00012-e012-toilet-feature-parity-rusty-figlet\`
+**Spec**: `<umbrella>/specs/00012-e012-toilet-feature-parity-rusty-figlet\`
 **Task**: T092 [FR-020, SC-008] — post-publish convention-lint reaffirmation
 **Verified**: 2026-05-25
 **Subject crate**: `rusty-figlet` v0.3.1 (published)

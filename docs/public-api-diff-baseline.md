@@ -16,7 +16,7 @@ the most recent published v0.2.x baseline.
 ## Planned command
 
 ```bash
-cd c:/claudecode/rusty-figlet
+cd <repo-root>
 cargo public-api --diff v0.2.0..HEAD --all-features
 ```
 
@@ -104,7 +104,7 @@ actual verification when the publish PR is opened.
 ### Planned command (post-publish re-run)
 
 ```bash
-cd c:/claudecode/rusty-figlet
+cd <repo-root>
 cargo public-api --diff v0.2.0..v0.3.1 --all-features
 ```
 

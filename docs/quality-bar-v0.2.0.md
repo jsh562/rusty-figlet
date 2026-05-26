@@ -2,7 +2,7 @@
 
 **Subject**: `rusty-figlet` v0.2.0 (commit `b493d576191e2e65529536c6c94facc3b91d7db2`)
 **Walked**: 2026-05-25
-**Reference**: `c:\claudecode\rusty\docs\quality-bar.md` §Cargo Features Convention Compliance
+**Reference**: `<umbrella>/docs/quality-bar.md` §Cargo Features Convention Compliance
 **Spec context**: T036 of `specs/00011-e011-cargo-features-convention-backfill/tasks.md`
 **Coverage**: completes FR-050 + SC-005 for the reference port
 
@@ -76,7 +76,7 @@ coverage).
 | f.1 | CHANGELOG entry per (e) above | PASS | See (e). |
 | f.2 | README banner at top, wrapped in `<!-- BANNER:v0.2.0 -->` / `<!-- /BANNER:v0.2.0 -->` delimiters per HINT-008 | PASS | `README.md:3-5` — verbatim FROZEN canonical wording with em-dash (U+2014) and matched delimiter pair. |
 | f.3 | `Cargo.toml` `[package].description` prefixed/appended with "v0.2: feature layout reorganized — see CHANGELOG" (FR-033(c) + AD-010) | PASS | `Cargo.toml:8` — description ends with `... v0.2: feature layout reorganized — see CHANGELOG.` Confirmed live on crates.io via `cargo info rusty-figlet`. |
-| f.4 | GitHub Release notes reproduce the migration table | USER-VERIFY | Not locally verifiable in this environment (no web/`gh` tool). Local-evidence support: tag `v0.2.0` points at `b493d57`; CHANGELOG migration table is canonical; release-drafter convention pulls from CHANGELOG `## [0.2.0]`. Recorded as USER-VERIFY in `c:\claudecode\rusty-figlet\docs\publish-verification.md` (T034). |
+| f.4 | GitHub Release notes reproduce the migration table | USER-VERIFY | Not locally verifiable in this environment (no web/`gh` tool). Local-evidence support: tag `v0.2.0` points at `b493d57`; CHANGELOG migration table is canonical; release-drafter convention pulls from CHANGELOG `## [0.2.0]`. Recorded as USER-VERIFY in `<repo>/docs\publish-verification.md` (T034). |
 
 **Manual** review — 3 of 4 surfaces locally verified PASS; surface f.4 is
 maintainer-confirmable via browser visit to
@@ -101,8 +101,7 @@ Full `tools/feature-lint/run.sh` invocation against the published
 rusty-figlet repo at commit `b493d57`:
 
 ```
-$ UMBRELLA_PATH=/c/claudecode/rusty PORT_PATH=/c/claudecode/rusty-figlet \
-    bash /c/claudecode/rusty/tools/feature-lint/run.sh
+$ UMBRELLA_PATH="$PWD" PORT_PATH="$PWD" bash tools/feature-lint/run.sh
 ---
 feature-lint sub-check summary:
   required-umbrellas      PASS

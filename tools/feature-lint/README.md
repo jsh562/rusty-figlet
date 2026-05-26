@@ -7,14 +7,7 @@ This tool enforces the Cargo features convention codified in:
 - `specs/adrs/0006-cargo-features-convention-for-portfolio-ports.md`
 - `project-instructions.md` §Cargo Feature Surface (v1.1.0)
 
-## v0.3.0 surface
-
-This vendored copy of `feature-lint` (from E011 Phase 2) is auto-discovering — it parses `Cargo.toml`'s `[features]` block at runtime and applies every sub-check against whatever leaf names it finds. No manual allowlist is required for the 14 new v0.3.0 leaves (`tlf-parser`, `filter-crop`, `filter-gay`, `filter-metal`, `filter-flip`, `filter-flop`, `filter-rotate`, `filter-border`, `color-truecolor`, `color-256`, `output-html`, `output-irc`, `output-svg`, `toilet-strict-compat`). The 19-leaf surface enumeration is reflected in the lint's PASS output by counting every `check-leaf-<leaf>` CI matrix entry it visits.
-
-The lint script is implemented once in the umbrella governance repo
-(`c:\claudecode\rusty\`) per ADR-0003 (Shared Automation Strategy) and AD-008
-of spec 00011. Per-port CI workflows check out the umbrella and invoke this
-script — there is NO copy of the lint script in any per-port repo.
+The lint script lives in the umbrella governance repo (this repo) per ADR-0003 (Shared Automation Strategy) & AD-008 of spec 00011. Each per-port repo vendors a copy into `tools/feature-lint/` so CI workflows don't need cross-repo checkout of the (private) umbrella. Sync precedent: rusty-figlet v0.2.0.
 
 ## Files
 
@@ -37,20 +30,14 @@ interface is:
 | `UMBRELLA_PATH` | Yes | Absolute path to the umbrella governance repo root (the directory containing `tools/feature-lint/`). |
 | `STRICT_MODE` | No (default: `1`) | When `1`, every violation is fatal. When `0`, violations are reported but the script exits 0. Reserved for opt-in scaffolding usage. |
 
-Example invocation from a per-port CI workflow:
+Example invocation from a per-port CI workflow (vendored copy):
 
 ```yaml
-- name: Checkout umbrella
-  uses: actions/checkout@v4
-  with:
-    repository: jsh562/rusty
-    path: umbrella
-
 - name: Run feature-lint
   run: |
-    UMBRELLA_PATH="${GITHUB_WORKSPACE}/umbrella" \
+    UMBRELLA_PATH="${GITHUB_WORKSPACE}" \
     PORT_PATH="${GITHUB_WORKSPACE}" \
-    bash umbrella/tools/feature-lint/run.sh
+    bash tools/feature-lint/run.sh
 ```
 
 ## Exit Codes
@@ -80,18 +67,17 @@ maximum across all sub-check exit codes (i.e., 0 if every sub-check passed,
 
 ## Local Development
 
-To run the lint against a local port checkout (e.g., from `c:\claudecode\rusty-figlet`):
+To run the lint against a local port checkout, `cd` into the port's repo root (which has the vendored `tools/feature-lint/`) and run:
 
 ```bash
-UMBRELLA_PATH=/c/claudecode/rusty PORT_PATH=/c/claudecode/rusty-figlet \
-  bash /c/claudecode/rusty/tools/feature-lint/run.sh
+UMBRELLA_PATH="$PWD" PORT_PATH="$PWD" bash tools/feature-lint/run.sh
 ```
 
 To run a single sub-check directly:
 
 ```bash
-UMBRELLA_PATH=/c/claudecode/rusty PORT_PATH=/c/claudecode/rusty-figlet \
-  bash /c/claudecode/rusty/tools/feature-lint/lint.sh --check required-umbrellas
+UMBRELLA_PATH="$PWD" PORT_PATH="$PWD" \
+  bash tools/feature-lint/lint.sh --check required-umbrellas
 ```
 
 Valid `--check` values: `required-umbrellas`, `leaf-ci-matrix`, `phantom-leaf`,

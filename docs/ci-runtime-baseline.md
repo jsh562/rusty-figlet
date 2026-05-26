@@ -21,7 +21,7 @@ member to the wall-clock; serial dependencies are added.
 
 ## 1. v0.2.x baseline inventory (current `ci.yml`)
 
-Source: `c:\claudecode\rusty-figlet\.github\workflows\ci.yml` as of v0.2.0.
+Source: `<repo>/.github\workflows\ci.yml` as of v0.2.0.
 
 ### 1.1 Pre-test gates (fan-out, no `needs:` dependency between them)
 
