@@ -4,6 +4,13 @@ All notable changes to `rusty-figlet` are documented here. The format follows [K
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-05-28
+
+### Changed (docs only — no code or API changes)
+
+- **README polish + accuracy fixes.** Moved the one-line purpose above the v0.3.0 migration banner so new readers see what the tool does first. Fixed the library dependency pin (`version = "0.2"` -> `"0.3"`) to match the published crate. Documented the `cli` feature and the `figlet-v01-compat` preset bundle in the feature tables (both defined in `Cargo.toml`, previously undocumented). Removed internal spec-artifact IDs. No code, API, or feature-surface changes.
+- **`tools/feature-lint/lint.sh`**: recognize `dev-helpers` as a dev-tooling feature name.
+
 ## [0.3.4] - 2026-05-26
 
 ### Fixed (tests only — no code or API changes)

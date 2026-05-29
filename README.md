@@ -1,8 +1,6 @@
 # rusty-figlet
 
-<!-- BANNER:v0.3.0 -->
-> **BREAKING (v0.3.0)**: Toilet feature parity added. TLF parser, 10 filters, HTML/IRC/SVG export. See CHANGELOG for migration.
-<!-- /BANNER:v0.3.0 -->
+Render ASCII-art banners from text. `rusty-figlet "Hello"` prints "Hello" as block letters. Rust port of [cmatsuoka's `figlet(6)`](http://www.figlet.org/) v2.2.5 & [Sam Hocevar's `toilet(1)`](http://caca.zoy.org/wiki/toilet) v0.3-1.
 
 [![crates.io](https://img.shields.io/crates/v/rusty-figlet.svg)](https://crates.io/crates/rusty-figlet)
 [![docs.rs](https://docs.rs/rusty-figlet/badge.svg)](https://docs.rs/rusty-figlet)
@@ -10,7 +8,9 @@
 [![MSRV](https://img.shields.io/badge/MSRV-1.85-blue.svg)](#msrv)
 [![license: MIT OR Apache-2.0](https://img.shields.io/crates/l/rusty-figlet.svg)](#license)
 
-Render ASCII-art banners from text. Rust port of [cmatsuoka's `figlet(6)`](http://www.figlet.org/) v2.2.5 & [Sam Hocevar's `toilet(1)`](http://caca.zoy.org/wiki/toilet) v0.3-1.
+<!-- BANNER:v0.3.0 -->
+> **BREAKING (v0.3.0)**: Toilet feature parity added. TLF parser, 10 filters, HTML/IRC/SVG export. See CHANGELOG for migration.
+<!-- /BANNER:v0.3.0 -->
 
 Ships 12 bundled `.flf` fonts + 3 `.tlf` fonts via `include_bytes!`. Six horizontal smush rules. Terminal-width-aware layout. 16-color, 256-color, & 24-bit truecolor output. The 10 toilet filters (`crop`, `gay`, `metal`, `flip`, `flop`, `180`, `left`, `right`, `border`, `nothing`) composable into pipelines. HTML, IRC mIRC, & SVG export. Byte-equal strict-compat modes for both figlet 2.2.5 & toilet 0.3-1.
 
@@ -179,6 +179,7 @@ To strip it down use `default-features = false` or `--no-default-features` and t
 
 | Feature | Description | Umbrella(s) |
 |---|---|---|
+| `cli` | clap argv parser + the binary entry point; the base CLI umbrella every bundle builds on. Color, completions, & `-t` terminal-width auto-detect arrive via their own leaves on top. Library consumers strip via `default-features = false`. | `full`, `figlet-classic`, `figlet-minimal`, `figlet-color`, `figlet-toilet-compat` |
 | `color` | ANSI/SGR color writer (`--color=auto|always|never`). Pulls `anstyle` + `termcolor`. | `full`, `figlet-color`, `figlet-toilet-compat` |
 | `rainbow` | Per-column HSV rainbow gradient (`--rainbow`, toilet-style). Implies `color`. | `full`, `figlet-color`, `figlet-toilet-compat` |
 | `terminal-width` | `-t` auto-detect via `terminal_size`. Without this leaf only an explicit `-w` value (or the 80-col fallback) applies. | `full` |
@@ -195,7 +196,7 @@ To strip it down use `default-features = false` or `--no-default-features` and t
 | `color-truecolor` | 24-bit SGR emission (`\x1b[38;2;R;G;Bm`). Implies `color`. Enables `--truecolor`. | `full` |
 | `color-256` | 256-color SGR emission (`\x1b[38;5;Nm`). Implies `color`. Enables `--ansi256`. | `full` |
 | `output-html` | HTML5 export with inline-CSS spans (`-E html`). Safe-to-embed: 4-char XSS escape applied to all text + double-quoted attributes per spec Security Posture. | `full` |
-| `output-irc` | mIRC `^C` color code export (`-E irc`). C0/C1 non-printables stripped per FR-015. | `full` |
+| `output-irc` | mIRC `^C` color code export (`-E irc`). C0/C1 non-printables stripped. | `full` |
 | `output-svg` | SVG 1.1 `<text>` export (`-E svg`). Safe-to-embed: same 4-char XSS escape table as `output-html`; no `<script>`/`<foreignObject>`/`xlink:href`/`href` emission. | `full` |
 | `toilet-strict-compat` | Byte-equal-to-toilet-0.3-1 strict-render path (`--strict`). 16-color floor; same XSS / IRC-strip defenses as the default path. | `full` |
 
@@ -205,7 +206,8 @@ To strip it down use `default-features = false` or `--no-default-features` and t
 |---|---|---|
 | `figlet-classic` | `cli` + `strict-compat` | Drop-in upstream `figlet 2.2.5` replacement. No color, no rainbow, no terminal-width auto-detect, no completions subcommand. |
 | `figlet-minimal` | `cli` | Bare-bones binary, no Strict mode, no extras. Smallest functional CLI. |
-| `figlet-color` | `cli` + `color` + `rainbow` | Modern figlet with color + per-column gradient output; no Strict mode or `-t` auto-detect. Retained at v0.2.x semantics per AD-010 for users who relied on the v0.2.x `figlet-toilet-compat` deprecated alias. |
+| `figlet-color` | `cli` + `color` + `rainbow` | Modern figlet with color + per-column gradient output; no Strict mode or `-t` auto-detect. Keeps its v0.2.x semantics for users who relied on the v0.2.x `figlet-toilet-compat` deprecated alias. |
+| `figlet-v01-compat` | `cli` + `color` + `rainbow` + `terminal-width` + `completions` | Restores the v0.1.0 `cli` surface. v0.2.0 narrowed `cli` to just `clap`, carving color, rainbow, terminal-width, & completions into separate leaves; pin this bundle if you relied on `default-features = false, features = ["cli"]` under v0.1.0. |
 | `figlet-toilet-compat` (**v0.3.0 BREAKING**) | `cli` + `color` + `rainbow` + `tlf-parser` + `filter-crop` + `filter-gay` + `filter-metal` + `filter-flip` + `filter-flop` + `filter-rotate` + `filter-border` | **v0.3.0 semantics restored**. Actual toilet capability parity: TLF font loading, all 10 filters, color, rainbow. v0.2.x users who relied on this name as a `figlet-color` alias should switch to `figlet-color` (unchanged). HTML, IRC, & SVG export, truecolor, & toilet-strict-compat are opt-in separately. They aren't bundled here so users pick which output paths to ship. |
 
 ### Safe-to-embed HTML/SVG output
@@ -232,7 +234,7 @@ For the common cases the named [preset bundles](#preset-bundles) above are usual
 
 ```toml
 [dependencies]
-rusty-figlet = { version = "0.2", default-features = false }
+rusty-figlet = { version = "0.3", default-features = false }
 ```
 
 This strips `clap`, `clap_complete`, `anstyle`, `termcolor`, & `terminal_size`. The resulting build pulls only `thiserror` & the in-house FIGfont parser. The CI `test-no-default` job runs `cargo tree --no-default-features` on every PR & fails the build if any CLI-only dep leaks back in.
